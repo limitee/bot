@@ -1,0 +1,88 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalH
+#define TerminalH
+
+#include "TerminalConfig.h"
+
+#include "DefineStruct.h"
+//---------------------------------------------------------------------------
+
+class CTerminalBox;
+class CTerminalConnection;
+class CTerminalRobotTyper;
+class CTerminalDaemon;
+
+class CTerminalPanel;
+class CTerminalCategory;
+
+class CTerminal
+{
+	public:
+		//用一个配置XML结构做对象的初始化界面
+		CTerminal(_di_IXMLTerminalType terminalXML);
+
+		bool Init();		//初始化各个组件，和加载映射驱动
+		bool Logon();		//登录
+		void Shutdown();	//停止各部件
+
+		void NotifyStub(int money, AnsiString stub);
+		void NotifyNoStub();
+
+		//本终端的各个部件，标签页界面、自动出票兑奖打字员任务、电子票根任务、打印机任务、自动适配驱动的动态库对象
+		_di_IXMLTerminalType xmlConfig;
+
+		CTerminalPanel *panel;
+		CTerminalCategory *monitor;
+
+		CTerminalRobotTyper *robotTyper;
+		CTerminalDaemon *daemon;
+
+		CTerminalConnection *connection;
+		CTerminalBox *box;
+
+		//以下几个函数都是动态库中的函数声明
+		HINSTANCE terminalDriver;		//硬件终端机的驱动动态库
+		//过滤接收的数据并查找是否应答，result和resp都是出口参数，过滤完的保存在result中注意加上retLen偏移量否则将清除了之前接收的部分数据，应答的保存在resp中
+		void __stdcall(*FilterResponse)(BYTE *src, int &srcLen, char *resp, int &rspLen, int &cutPaper);
+		//验证并提取票根信息数据，进行票面核对，返回值为票面金额， <=0则是失败
+		int __stdcall(*ParserVerifyStub)(int dataLen, BYTE *data, char *stubBytes);
+
+		//软件销售系统的适配动态库
+		HINSTANCE posDriver;
+		//输入彩票类型号码倍数等原始信息，返回这张票的打印按键序列，以便不同机型做适配
+		void __stdcall(*GeneralTicketKeyStr)(AnsiString gameKind, AnsiString number, int times, char *keys);
+		//输入中奖序列号，输出按键
+		void __stdcall(*GeneralBonusKeyStr)(AnsiString seq, char *keys);
+
+		//查找定位和计算按键值串的辅助函数
+		AnsiString getJumpInnerCodeString(_di_IXMLStakeType last, _di_IXMLStakeType current);
+
+		_di_IXMLStakeType findStakeById(AnsiString gameId, AnsiString betId);
+		AnsiString GetStakeNameById(AnsiString gameId, AnsiString betId);
+		_di_IXMLStakeType findStakeByNode(AnsiString node);
+		_di_IXMLKeyboardCodeType findKeyboardCodeByInnerCode(AnsiString innerCode);
+
+		_di_IXMLStakeType lastStake;        //上一张彩票节点
+		_di_IXMLStakeType currentStake;     //当前本张彩票节点
+
+		//是否需要重置
+		bool needReset;
+
+		//当前的处理请求和票根
+		Request *currentRequest;
+		Stub currentStub;
+
+		//设置的状态或参数
+		WorkStatus status;
+
+		void ResetTerminalContext();		 //终端上下文复位，只清理工作线程
+
+	private:
+		//查找定位和计算不同投注类型跳转按键值串的辅助函数，相同玩法中的
+		AnsiString getGameJumpInnerCodeString(_di_IXMLStakeType last, _di_IXMLStakeType current);
+
+		TCriticalSection *lock;
+};
+
+#endif
+

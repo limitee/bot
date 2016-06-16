@@ -1,0 +1,133 @@
+//---------------------------------------------------------------------------
+
+#pragma hdrstop
+
+#include "SendThread.h"
+#include "util.h"
+
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+DWORD WINAPI SendThread::run(LPVOID lpParamter)
+{
+	SendThread* ctx = (SendThread*)lpParamter;
+	while(ctx->connection->get_isOpened())
+	{
+		ctx->ensureDeviceOpen();
+        ctx->handleOtherToBox();
+        ctx->handleMessageToBox();
+    }
+	return 0;
+}
+
+SendThread::SendThread(Printceptor* printceptor)
+{
+	this->printceptor = printceptor;
+	connection = printceptor->connection;
+	heartCnt = 0;
+    bigDataBuffer = new RingBytesBuffer(BoxMessage::PACKAGE_MAX_LENGTH * 200);
+	//circleSendSeq = new CircleSendSeq();
+	HANDLE hThread = CreateThread(NULL, 0, run, this, 0, NULL);
+    CloseHandle(hThread);
+}
+
+void SendThread::ensureDeviceOpen()
+{
+	while (!connection->get_isConnected() && connection->get_isOpened())
+	{
+        if (!connection->isDeviceOpened()) {
+                connection->openDevice();
+            }
+			//WriteLog("en1 %d",GetTickCount());
+            if (connection->isDeviceOpened()) {
+				write(HeartBeatMessage::getInstance());
+				//WriteLog("en2 %d",GetTickCount());
+            }
+			//else {
+                //todo 尝试切换通过蓝牙通道寻找设备。
+            //    connection.findDeviceChannel();
+            //}
+            Sleep(connection->HEART_BEAT_INTERNAL);
+    }
+}
+
+void SendThread::write(BoxMessage* message)
+{
+        int len = message->length;
+        if (len < 0)
+        {
+            len = len & 0xFFFF;
+        }
+		if (len <= BoxMessage::PACKAGE_MAX_LENGTH) {
+            writeInternal(message->marshal());
+            return;
+		}
+		if ( message->data.GetPt() == NULL) return;
+        BoxMessage* msg = new BoxMessage(message->command);
+        if (bigDataBuffer->get_capcity() < len) {
+			bigDataBuffer = new RingBytesBuffer(len + BoxMessage::PACKAGE_MAX_LENGTH);
+        }
+		bigDataBuffer->push(message->data);
+		while (bigDataBuffer->readable() >= BoxMessage::PACKAGE_MAX_LENGTH) {
+			msg->data = bigDataBuffer->pop(BoxMessage::PACKAGE_MAX_LENGTH);
+			writeInternal(msg->marshal());
+        }
+		if(bigDataBuffer->readable()>0){
+            msg->data= bigDataBuffer->popAll();
+            writeInternal(msg->marshal());
+        }
+}
+
+void SendThread::writeInternal(Array<BYTE> data)
+{
+	if (data.GetPt() == NULL || data.GetSize() == 0) return;
+    connection->write(data);
+}
+
+void SendThread::handleMessageToBox()
+{
+	if(connection->get_isConnected())
+	{
+		heartCnt++;
+		if(heartCnt < 200){
+			Sleep(5);
+			return;
+		}
+		heartCnt = 0;
+		BoxMessage* toBox = NULL;
+		///TODO
+		if (toBox == NULL)
+		{
+			toBox = new BoxMessage(BoxMessage::APP_HEART_BEAT);
+			toBox->command = BoxMessage::APP_HEART_BEAT;
+			toBox->data= Array<BYTE>();
+			toBox->seq = 0;
+			toBox->length = 0;
+			if (this->printceptor->getFirmwareUpdateIng() ==
+						this->printceptor->FIRMWARE_UPDATE_WAIT)
+			{
+				this->printceptor->updateFirmware();
+			}
+			else
+			{
+				write(toBox);
+			}
+			//WriteLog("ht %d",GetTickCount());
+		}
+		else
+		{
+		}
+		Sleep(5);
+	}
+}
+
+void SendThread::handleOtherToBox()
+{
+	BoxMessage response = BoxMessage();
+	do {
+		response = connection->toBoxOther->Take();
+		if (response.command != 0) {
+            write(&response);
+        }
+    }while (response.command != 0);
+}

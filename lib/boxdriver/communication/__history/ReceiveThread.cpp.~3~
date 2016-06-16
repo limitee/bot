@@ -1,0 +1,161 @@
+//---------------------------------------------------------------------------
+
+#pragma hdrstop
+
+#include "ReceiveThread.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+#include "Printceptor.h"
+
+#include "ReceiveThread.h"
+#include "ResponseMessage.h"
+#include "FuncUtils.h"
+#include "util.h"
+
+void ReceiveThread::handleResponseMessage()
+{
+    //sendThread.boxAcquireRead(message.seq);
+    //message = NULL;
+}
+
+void ReceiveThread::readFromDevice()
+{
+    int readCount = 0;
+    long lastHasDataTime = GetTickCount();
+    do {
+        readCount = this->connection->read(buffer);  //没有数据时500毫秒后超时返回0，设备异常时返回负数。
+        if (readCount <= -90) {     //设备还没有准备好
+            if (connection->get_isConnected())
+			{
+                connection->notifyDevicetException(readCount, true);
+            }
+            Sleep(readInterval);
+            continue;
+        } else if (readCount <= 0) {
+            if (GetTickCount() - lastHasDataTime > read_timeout) {
+                lastHasDataTime = GetTickCount();
+				if (connection->get_isConnected())
+				{
+					connection->notifyDevicetException(0, true);
+				}
+			}
+            Sleep(10);
+            continue;
+        }
+		lastHasDataTime = GetTickCount();
+        Sleep(10);
+		//WriteLog("rf2 %d %d",GetTickCount(),readCount);
+    } while (readCount <= 0 && connection->get_isOpened());
+}
+
+void ReceiveThread::readMessage()
+{
+    if(message==NULL)
+	{
+		if (buffer->readable() < BoxMessage::MESSAGE_MIN_LENGTH)
+		{
+            return;
+        }
+        bool found = false;
+        //BoxMessageEnum command = null;
+        do {
+            while (buffer->readable() > 1)
+			{
+                if (buffer->pop() == BoxMessage::FLAG_HEAD
+					&& BoxMessage::isBoxCommand(buffer->peek(0))) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return;
+            if (buffer->readable() < BoxMessage::MESSAGE_MIN_LENGTH - 1) {
+                buffer->back(1);
+                return;
+            }
+			message = new BoxMessage(BoxMessage::BOX_HEART_BEAT);
+			message->command = (BoxMessage::BoxMessageEnum)buffer->pop();
+			message->data = Array<BYTE>();
+            message->seq = (char)buffer->pop();
+			BYTE pop_h = buffer->pop();
+			BYTE pop_l = buffer->pop();
+			message->length = FuncUtils::bytesToShort(pop_h, pop_l);
+            if (message->length > BoxMessage::PACKAGE_MAX_LENGTH) {
+                message = NULL;
+            }
+        } while (message == NULL);
+    }
+
+    if (buffer->readable() < message->length + 4) return;
+
+    if(message->length>0 )
+	{
+        message->data= buffer->pop(message->length);
+		int crc32 = FuncUtils::bytes2Int(buffer->pop(4));
+		if (!BoxMessage::checkCrc32(message->data, crc32)) {
+                message = NULL;
+        }
+    } else {
+		int crc32 = FuncUtils::bytes2Int(buffer->pop(4));
+		if (!BoxMessage::checkCrc32(message->data, crc32)) {
+                message = NULL;
+        }
+    }
+}
+
+DWORD WINAPI ReceiveThread::run(LPVOID lpParamter)
+{
+	ReceiveThread* ctx = (ReceiveThread*)lpParamter;
+	while (ctx->connection->get_isOpened())
+	{
+		ctx->readFromDevice();
+        do {
+            ctx->readMessage();
+            if (ctx->message != NULL)
+			{
+                if (!ctx->message->isReady()) {
+                    break;
+                }
+                if ((ctx->message->command != BoxMessage::BOX_HEART_BEAT
+                        && ctx->message->command != BoxMessage::BOX_NOTIFY_AP_REPORT) || !ctx->connection->get_isConnected())
+				{
+                }
+
+                if (ctx->message->command == BoxMessage::BOX_HEART_BEAT)
+				{
+                    if (!ctx->connection->get_isConnected()) {
+                        ctx->connection->setConnected();
+                    }
+                    ctx->message = NULL;
+                    continue;
+                }
+                ctx->connection->boxHasMessage();
+                if (ctx->message->command == BoxMessage::BOX_RESPONSE) {
+                    ctx->handleResponseMessage();
+                    ctx->message = NULL;
+                    continue;
+                }
+
+                if (ctx->message->command == BoxMessage::BOX_POS_DATA) {
+                    //ctx->connection->sendMessage(new ResponseMessage(ctx->message));
+                    ctx->connection->printceptor->handleMessagesFromBox(ctx->message);
+                }
+				else
+				{
+					ctx->connection->printceptor->handleMessagesFromBox(ctx->message);
+				}
+				ctx->message = NULL;
+			}
+        } while (ctx->buffer->readable() >= BoxMessage::MESSAGE_MIN_LENGTH);
+    }
+	return 0;
+}
+
+ReceiveThread::ReceiveThread(Connection* connection)
+{
+	this->connection = connection;
+	message = NULL;
+	buffer = new RingBytesBuffer(BoxMessage::PACKAGE_MAX_LENGTH * 2);
+	HANDLE hThread = CreateThread(NULL, 0, run, this, 0, NULL);
+    CloseHandle(hThread);
+}

@@ -1,0 +1,24 @@
+//---------------------------------------------------------------------------
+
+#ifndef FileDataLoaderH
+#define FileDataLoaderH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+
+
+class CController;
+
+class CFileDataLoader : TThread
+{
+	public:
+		__fastcall CFileDataLoader(CController *c, bool CreateSuspended);
+
+		//自动处理线程任务
+		void __fastcall Execute();
+
+	private:
+		CController *controller;
+
+};
+
+#endif

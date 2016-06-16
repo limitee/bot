@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="GB2312"?>
+<!-- edited with XMLSpy v2011 (http://www.altova.com) by Liuxinfeng (LottChina) -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<xsd:complexType name="TerminalParamType">
+		<xsd:annotation>
+			<xsd:documentation>终端机ID、名称以及串口等其他设置，以及本终端上的小键盘定义，和能够出票的一组游戏对象列表</xsd:documentation>
+		</xsd:annotation>
+		<xsd:attribute name="TerminalID" type="xsd:string"/>
+		<xsd:attribute name="HardwareRef" type="xsd:string"/>
+		<xsd:attribute name="LotteryPosRef" type="xsd:string"/>
+		<xsd:attribute name="ConnectionKey" type="xsd:string"/>
+		<xsd:attribute name="BoxCom" type="xsd:string"/>
+		<xsd:attribute name="UKeyPassword" type="xsd:string"/>
+		<xsd:attribute name="SalesAccount" type="xsd:string"/>
+		<xsd:attribute name="SalesPassword" type="xsd:string"/>
+		<xsd:attribute name="EnableAutoRun" type="xsd:boolean"/>
+		<xsd:attribute name="ErrorTimeoutRetry" type="xsd:boolean"/>
+	</xsd:complexType>
+	<xsd:complexType name="DataCenterType">
+		<xsd:annotation>
+			<xsd:documentation>出票兑奖数据中心的配置文件，可以包含多台不同类型的终端机</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="TerminalParam" type="TerminalParamType" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="CenterCode" type="xsd:string"/>
+		<xsd:attribute name="ServerHost" type="xsd:string"/>
+		<xsd:attribute name="ServerPort" type="xsd:int"/>
+		<xsd:attribute name="BinFileDir" type="xsd:string"/>
+		<xsd:attribute name="HexFileDir" type="xsd:string"/>
+		<xsd:attribute name="PrinterCom" type="xsd:string"/>
+		<xsd:attribute name="PrinterComParam" type="xsd:string"/>
+		<xsd:attribute name="Desc" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:element name="DataCenter" type="DataCenterType"/>
+</xsd:schema>

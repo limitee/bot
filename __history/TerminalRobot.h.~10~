@@ -1,0 +1,35 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalRobotH
+#define TerminalRobotH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+#include "TerminalConfig.h"
+
+class CTerminal;
+
+class CTerminalTypeRobot : TThread
+{
+	public:
+		__fastcall CTerminalTypeRobot(CTerminal *term, bool CreateSuspended);
+
+		//自动处理线程任务
+		void __fastcall Execute();
+
+		long SuspendTimestamp; 							//挂起的时间戳，非挂起状态为-1
+		void Wakeup(int money, AnsiString stub);       //唤醒，在外部验证完把金额带进来
+
+		void PrintTicket();		//出票
+		void CashPrize();       //兑奖
+
+		_di_IXMLStakeType lastStake;        //上一张彩票节点
+		_di_IXMLStakeType currentStake;     //当前本张彩票节点
+
+	private:
+		CTerminal *terminal;
+
+		int verifyMoney;
+		AnsiString stubString;
+};
+
+#endif
+

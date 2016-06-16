@@ -1,0 +1,22 @@
+//---------------------------------------------------------------------------
+
+#pragma hdrstop
+
+#include "FileDataLoader.h"
+#include "Controller.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+//---------------------------------------------------------------------------
+__fastcall CFileDataLoader::CFileDataLoader(CController *c, bool CreateSuspended): TThread(CreateSuspended)
+{
+	controller =c;
+}
+
+void __fastcall CFileDataLoader::Execute()
+{
+	while (! Terminated){
+
+		Sleep(500);
+	}
+}

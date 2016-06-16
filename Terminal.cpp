@@ -1,0 +1,281 @@
+// ---------------------------------------------------------------------------
+#pragma hdrstop
+#include <stdio.h>
+#include <inifiles.hpp>
+
+#include "Terminal.h"
+#include "TerminalBox.h"
+#include "TerminalPanel.h"
+#include "TerminalConfig.h"
+#include "TerminalCategory.h"
+#include "TerminalConnection.h"
+#include "TerminalRobotTyper.h"
+#include "TerminalDaemon.h"
+
+#include "Controller.h"
+#include "FileDataDealer.h"
+#include "LogSupport.h"
+#include "MediaSupport.h"
+#include "FrameMonitorGroup.h"
+#include "TicketCenterNodeApp.h"
+
+#pragma package(smart_init)
+
+// ---------------------------------------------------------------------------
+CTerminal::CTerminal(_di_IXMLTerminalType terminalXML){
+	// 保存配置对象指针，供外部类直接用
+	xmlConfig = terminalXML;
+	status =INIT;
+	// 终端界面，需要计算一下以调整位置
+	panel = new CTerminalPanel(FrameMonitor, this);
+	// 动态生成的键盘按键和其对应的动态按键事件
+	panel->ButtonGroupKeyBoard->Height =((terminalXML->Keyboard->Count +4) /5) *35;    //重设高度，刚好
+	for (int k = 0; k < terminalXML->Keyboard->Count; k++) {
+		_di_IXMLKeyboardCodeType KeyItem =terminalXML->Keyboard->Get_KeyboardCode(k);
+		TGrpButtonItem *buttonItem =panel->ButtonGroupKeyBoard->Items->Add();
+		TAction *Action = new TAction(MainForm);
+		Action->Caption = KeyItem->KeyboardValue;
+		Action->OnExecute = panel->KeyActionExecute;	// 包括非可见值，传递ASCII按键值，显示为键盘上的名称
+		Action->ActionList = MainForm->actionList;
+		buttonItem->Action = Action;
+		buttonItem->Caption =KeyItem->KeyboardName; 	// 可见，显示按钮
+	}
+	// 动态生成报表菜单
+	panel->LabelReport->Top =panel->ButtonGroupKeyBoard->Top +panel->ButtonGroupKeyBoard->Height +7;
+	panel->CategoryButtonsReport->Top =panel->LabelReport->Top +19;
+	panel->CategoryButtonsReport->Height =panel->CategoryButtonsReport->Font->Size *2 *(terminalXML->CategoryReport->Count +2) +terminalXML->CategoryReport->Count;   //边宽
+	for (int k = 0; k < terminalXML->CategoryReport->Count; k++) {
+		TButtonCategory *category =panel->CategoryButtonsReport->Categories->Add();
+		_di_IXMLReportMenuType menu =terminalXML->CategoryReport->Get_ReportMenu(k);
+		category->Caption =menu->Caption;       		//设置标题
+    }
+	// 生成监控Panel
+	monitor = new CTerminalCategory(FrameMonitor->CategoryPanelGroup, this);
+	monitor->ShapeStatus->Brush->Color =clRed;			//状态红
+    monitor->SetConnectionStatus(false);
+	// 生成各个任务对象
+	box =new CTerminalBox(this);
+	connection =new CTerminalConnection(this, false);   		//Socket
+	//
+	robotTyper = new CTerminalRobotTyper(this, true);
+	daemon =new CTerminalDaemon(this, false);
+	// 动态库句柄为NULL，Init时再初始化
+    currentRequest =NULL;
+	terminalDriver = 0;
+	posDriver =0;
+	needReset =false;
+    currentStub =new Stub();
+    //有些方法加锁，初始化
+	lock =new TCriticalSection();
+}
+
+//------------------------------------------------------------------------------------
+bool CTerminal::Init() {
+	// 加载硬件动态库中的过滤函数，映射到本地
+	AnsiString dllFile = "Terminal" +xmlConfig->TerminalType +".dll";       //硬件终端的适配接口动态库
+	terminalDriver = LoadLibrary(dllFile.c_str());
+	if (terminalDriver == 0 || terminalDriver == NULL) {
+		controller->logSupport->WriteLogWithTime("硬件终端机动态库 " +dllFile +" 初始化错误！");
+		status =ERR;
+		return false;
+	}
+	FARPROC PFR = GetProcAddress(terminalDriver, "FilterResponse");
+	FilterResponse = (void __stdcall(__cdecl*)(BYTE *, int&, char *, int &, int &))PFR;
+	FARPROC PD = GetProcAddress(terminalDriver, "ParserVerifyStub"); 		// 验证票根信息
+	ParserVerifyStub = (int __stdcall(__cdecl*)(int dataLen, BYTE *data, char *stubBytes))PD;
+	//系统版本适配动态库，映射到本地
+	dllFile = "PosAdapter" +xmlConfig->LotteryPos->PosType + ".dll";       				//销售系统适配接口动态库
+	posDriver = LoadLibrary(dllFile.c_str());
+	if (posDriver == 0 || posDriver == NULL) {
+		controller->logSupport->WriteLogWithTime("销售系统适配动态库 " +dllFile +" 初始化错误！");
+		status =ERR;
+		return false;
+	}
+	FARPROC PK = GetProcAddress(posDriver, "GeneralTicketKeyStr"); 			//生成彩票按键序列码
+	GeneralTicketKeyStr =(void __stdcall(__cdecl*)(AnsiString, AnsiString, int, char *keys))PK;
+	FARPROC PGB = GetProcAddress(posDriver, "GeneralBonusKeyStr"); 			//生成兑奖按键序列码
+	GeneralBonusKeyStr =(void __stdcall(__cdecl*)(AnsiString, char *keys))PGB;
+	// 以下是根据设置初始化端口
+	if (!box->Init(xmlConfig->BoxComParam)) {
+		controller->logSupport->WriteLogWithTime("BOX设备初始化错误！");
+		return false;
+	}
+	return true;
+}
+
+//------------------------------------------------------------------------------------
+bool CTerminal::Logon() {
+	panel->BitBtnPrint->Caption ="登录中……";
+	panel->BitBtnPrint->Enabled =false;
+	//登录按键，按规则填入参数
+	AnsiString loginKeys =xmlConfig->Keyboard->Login;
+	loginKeys =StringReplace(loginKeys, "{UKeyPassword}", xmlConfig->LotteryPos->UKeyPassword, TReplaceFlags() << rfReplaceAll);
+	loginKeys =StringReplace(loginKeys, "{SalesAccount}", xmlConfig->LotteryPos->SalesAccount, TReplaceFlags() << rfReplaceAll);
+	loginKeys =StringReplace(loginKeys, "{SalesPassword}", xmlConfig->LotteryPos->SalesPassword, TReplaceFlags() << rfReplaceAll);
+	box->TypeInnerString(loginKeys);
+	daemon->suspendTimestamp =GetTickCount();     //设置时间戳，判断出样票时间的超时参数
+}
+
+//------------------------------------------------------------------------------------
+void CTerminal::Shutdown() {
+	connection->DisConnect();
+	int count =0;
+	while(status >WorkStatus::IDLE){
+		Sleep(300);        //忙着等结果的话，等待状态变了再关闭，也可能是等超时，确保工作处理完一个完整流程
+		if ((count ++) >10) break;
+	}
+	robotTyper->Stop();
+	if (status ==WorkStatus::IDLE) {
+		box->TypeInnerString(xmlConfig->Keyboard->DefaultBackRoot);        //先退回到根
+		box->TypeInnerString(xmlConfig->Keyboard->Shutdown);        //关机按键
+		//box->Close();   //本行不能加，否则最后的按键还没发出或没有发完就会被终止
+	}
+}
+
+//---------------------------------------------------------------------------------------
+void CTerminal::ResetTerminalContext(){
+//	lock->Acquire();                    //加锁，避免同时写
+	daemon->suspendTimestamp =-1;
+	daemon->timeoutResetTimestamp =-1;
+	//
+	if (currentRequest !=NULL){
+		delete currentRequest;
+		currentRequest =NULL;
+	}
+	currentStub->stub ="";
+	currentStake =NULL;
+	//
+	needReset =false;            		//重设不能复位
+	status =WorkStatus::IDLE;
+//	lock->Release();
+}
+
+//------------------------------------------------------------------------------------
+void CTerminal::NotifyStub(int money, AnsiString stub){
+	//每次处理完一张不管正常不正常，处理票接数据的时间戳都设置为-1，避免定时器和票根处理任务冲突
+	daemon->suspendTimestamp =-1;
+	daemon->timeoutResetTimestamp =-1;
+	//
+	currentStub->request =currentRequest;
+	currentStub->status =1;      //OK
+	currentStub->money =money;
+	currentStub->stub =stub;
+	//更新显示票根，用定时器，免得直接线程内操纵控件
+	monitor->SetStubEchoText(stub);
+	//状态切换
+	if (status ==WorkStatus::LOGON) {             					//第一张是票样，说明终端机登录成功了
+		monitor->ShapeStatus->Brush->Color =clGreen;
+		ResetTerminalContext();
+		panel->ResetPanelRequestEcho();
+		panel->TrackBarKey->Position =panel->TrackBarKey->Min;      //成功登录后，设置最慢出票按键间隔
+		box->SetKeyInterval(panel->TrackBarKey->Max);
+	}else if (status ==WorkStatus::PRINT) {          	//唤醒机械手线程，出票啦
+		robotTyper->Notify();
+	}else if (status ==WorkStatus::AWARD) {    			//兑奖结果
+		robotTyper->Notify();
+	}else if (status ==WorkStatus::REPORT) {   			//查询统计
+		if (currentRequest ==NULL){
+			//connection->HttpReport(stub);              	//点击查询走POST上报，代码在这自行清理
+			box->TypeInnerString(xmlConfig->CategoryReport->FinishKeys);
+			ResetTerminalContext();
+		}else{
+			robotTyper->Notify();        				//服务器请求查询走SOCKET
+		}
+	}
+}
+
+//------------------------------------------------------------------------------------
+AnsiString CTerminal::getJumpInnerCodeString(_di_IXMLStakeType last, _di_IXMLStakeType current) {
+	// 查找不同注之间界面跳转的最短路径字符串
+	if (last == current) return ""; // 如果类型相同，直接返回，不用切换界面
+	AnsiString keys = "";
+	if (last !=NULL && current->StakeNode.SubString(0, 3) == last->StakeNode.SubString(0, 3)){ // 相同 Game
+		keys = getGameJumpInnerCodeString(last, current);
+	}else { // 不同的游戏
+		keys += xmlConfig->Keyboard->DefaultBackRoot; // 返回玩法主目录，不用玩法定义的返回键，因为没有投注号码
+		for (int i = 0; i < xmlConfig->LotteryPos->Count; i++) {
+			_di_IXMLGameType game = xmlConfig->LotteryPos->Get_Game(i);
+			if (game->GameNode == current->StakeNode.SubString(0, 3))
+			{ // 进入目标游戏了
+				keys += game->EnterKey;
+				keys += "~~"; // 为了等待界面切换留点时间，已经进入到了这个默认游戏起始节点了
+				_di_IXMLStakeType defaultStake = findStakeByNode(game->DefaultStakeNode);
+				keys += getGameJumpInnerCodeString(defaultStake, current);
+				break;
+			}
+		}
+	}
+	if (keys =="") controller->AddErrorMessage("终端" +xmlConfig->TerminalID +"配置文件错误：没有找到路由！last=" +last->StakeNode +" current=" +current->StakeNode);
+
+	return keys;
+}
+
+//------------------------------------------------------------------------------------
+AnsiString CTerminal::getGameJumpInnerCodeString(_di_IXMLStakeType last, _di_IXMLStakeType current) {
+	// 查找一个玩法内的不同注之间界面跳转的最短路径字符串
+	if (last == current) return ""; // 如果类型相同，直接返回，不用切换界面
+	AnsiString keys = "";
+	_di_IXMLChoiceType choice = NULL;
+	for (int i = 0; i < last->Count; i++) {
+		choice = last->Get_Choice(i);
+		if (choice->JumpTo == current->StakeNode) { // 直接跳转的路由找到了
+			keys += choice->ChoiceKey;
+			keys += "~~~"; // 为了等待界面切换留点时间
+			break;
+		}
+	}
+	// 如果本Stake条目所有跳转的路由表都没有的话，进入最后一个总菜单，然后再根据总节点转到各个投注类型上去
+	if (choice->JumpTo != current->StakeNode && choice->JumpTo.Pos("*") > 0){
+		keys += choice->ChoiceKey;
+		keys += "~~~"; // 为了等待界面切换留点时间，现在已经切换到节点选择菜单了
+		_di_IXMLStakeType nodeStake = findStakeByNode(choice->JumpTo);
+		for (int k = 0; k < nodeStake->Count; k++) {
+			choice = nodeStake->Get_Choice(k);
+			if (choice->JumpTo == current->StakeNode) { // 跳转的路由找到了
+				keys += choice->ChoiceKey;
+				keys += "~~~"; // 为了等待界面切换留点时间
+				break;
+			}
+		}
+	}
+	if (keys =="") controller->AddErrorMessage("终端" +xmlConfig->TerminalID +"配置文件错误：没有找到路由！last=" +last->StakeNode +"current=" +current->StakeNode);
+
+	return keys;
+}
+
+// *********************************************************************************
+_di_IXMLStakeType CTerminal::findStakeById(AnsiString gameId, AnsiString betId){ // 主要是查找当前对应的玩法投注方式Node时用
+	AnsiString findStakeStr = xmlConfig->TerminalID + ":" + gameId +":" + betId;
+	int idx = controller->terminalGameAdapterGroup->IndexOf(findStakeStr);
+	return (IXMLStakeType *)controller->terminalGameAdapterGroup->Objects[idx];
+}
+
+// *********************************************************************************
+_di_IXMLStakeType CTerminal::findStakeByNode(AnsiString node) { 				// 显示用
+	AnsiString findStakeStr = xmlConfig->TerminalID + ":" + node;
+	int idx = controller->terminalGameAdapterGroup->IndexOf(findStakeStr);
+	return (IXMLStakeType *)controller->terminalGameAdapterGroup->Objects[idx];
+}
+
+// *********************************************************************************
+AnsiString CTerminal::GetStakeNameById(AnsiString gameId, AnsiString betId){ 	// 显示用
+	AnsiString findGameStr = xmlConfig->TerminalID + ":" + gameId;
+	int idx = controller->terminalGameGroup->IndexOf(findGameStr);
+	if (idx <0) return "";
+	_di_IXMLGameType game =(IXMLGameType*)controller->terminalGameGroup->Objects[idx];
+	AnsiString findStakeStr = findGameStr + ":" + AnsiString(betId);
+	idx = controller->terminalGameAdapterGroup->IndexOf(findStakeStr);
+	_di_IXMLStakeType stake =(IXMLStakeType*)controller->terminalGameAdapterGroup->Objects[idx];
+	return game->GameName + stake->StakeName;
+}
+
+// *********************************************************************************
+_di_IXMLKeyboardCodeType CTerminal::findKeyboardCodeByInnerCode(AnsiString innerCode) {
+	for (int i = 0; i < xmlConfig->Keyboard->Count; i++) {
+		AnsiString code = xmlConfig->Keyboard->Get_KeyboardCode(i)->InnerCode;
+		if (innerCode == code) return xmlConfig->Keyboard->Get_KeyboardCode(i);
+	}
+	return NULL;
+}
+
+

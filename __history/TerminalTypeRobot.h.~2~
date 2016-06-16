@@ -1,0 +1,63 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalTypeRobotH
+#define TerminalTypeRobotH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+#include "TerminalConfig.h"
+
+class CTerminal;
+
+class CTerminalTypeRobot : TThread
+{
+	public:
+		__fastcall CTerminalTypeRobot(CTerminal *term, bool CreateSuspended);
+		//
+		bool InitOK;
+
+		//自动处理线程任务
+		void __fastcall Execute();
+		long SuspendTimestamp; 							//挂起的时间戳，非挂起状态为-1
+		void Wakeup(int money, AnsiString stub);       //唤醒，在外部验证完把金额带进来
+		bool CanType;
+
+		void PrintTicket();		//出票
+		void CashPrize();       //兑奖
+
+		_di_IXMLStakeType lastStake;        //上一张彩票节点
+		_di_IXMLStakeType currentStake;     //当前本张彩票节点
+
+		//指定串口初始化
+		bool Init(AnsiString commPort, AnsiString comParam);
+		//字符串向串口打字
+		void TypeInnerString(AnsiString str);
+		//设置间隔时间
+		void SetKeyInterval(int interval);
+		//ASCII码串向串口输出，可包含不可见字符F1F2方向键等等，型号直接在配置中读取
+		void TypeAsciiCode(AnsiString asciiCode);
+
+	private:
+		CTerminal *terminal;
+
+		int verifyMoney;
+		AnsiString stubString;
+
+		HANDLE hCom;        	//键盘连线串口句柄
+
+		void WriteChar(Char b);		//通用的写入1字节的
+		//针对PS/2键盘口使用的协议
+		void WriteCharPS2(Char b);
+		void TypeAsciiCodePS2(AnsiString asciiCode);
+		//针对串口转USB键盘口使用的
+		void WriteCharUSB(Char b);
+		void TypeAsciiCodeUSB(AnsiString asciiCode);
+		//针对大赢家键盘口使用的
+		void WriteCharDYJ(Char b);
+		void TypeAsciiCodeDYJ(AnsiString asciiCode);
+		//针对倾慧清使用的
+		void WriteCharQHQ(Char b);
+		void TypeAsciiCodeQHQ(AnsiString asciiCode);
+
+};
+
+#endif
+

@@ -1,0 +1,146 @@
+//---------------------------------------------------------------------------
+
+#ifndef LotteryMerchantAppH
+#define LotteryMerchantAppH
+//---------------------------------------------------------------------------
+#include <Classes.hpp>
+#include <Controls.hpp>
+#include <StdCtrls.hpp>
+#include <Forms.hpp>
+#include <ComCtrls.hpp>
+#include <ImgList.hpp>
+#include <ExtCtrls.hpp>
+#include <OleCtrls.hpp>
+#include <SHDocVw.hpp>
+#include <Grids.hpp>
+#include "trayicon.h"
+#include <pngimage.hpp>
+#include <jpeg.hpp>
+#include <Graphics.hpp>
+#include "IdBaseComponent.hpp"
+#include "IdComponent.hpp"
+#include "IdHTTP.hpp"
+#include "IdTCPClient.hpp"
+#include "IdTCPConnection.hpp"
+#include <Buttons.hpp>
+#include "IdCookieManager.hpp"
+#include <Vcl.Mask.hpp>
+#include <Vcl.Dialogs.hpp>
+#include "SHDocVw_OCX.h"
+
+#include <gdiplus.h>
+#include <IdCustomHTTPServer.hpp>
+#include <IdCustomTCPServer.hpp>
+#include <IdHTTPServer.hpp>
+#include <Vcl.Menus.hpp>
+#include <IdContext.hpp>
+#include <System.ImageList.hpp>
+//---------------------------------------------------------------------------
+
+class CController;
+class CTerminal;
+class CLogSupport;
+class CDatabaseSupport;
+
+class TMainForm : public TForm
+{
+__published:	// IDE-managed Components
+	TPageControl *PageControl;
+	TTabSheet *TabSheetManage;
+	TImageList *ImageListTab;
+	TTabSheet *TabSheetConfig;
+	TCTrayIcon *CTrayIcon;
+	TStatusBar *StatusBar;
+	TTimer *TimerClock;
+	TTabSheet *TabSheetMonitor;
+	TIdHTTP *IdHTTP;
+	TStringGrid *StringGridTxt;
+	TLabel *LabelLoadTxt;
+	TLabel *LabelMonitor;
+	TSpeedButton *SpeedButtonTxtLoad;
+	TPanel *PanelTxt;
+	TPanel *PanelTerminalConfig;
+	TComboBox *ComboBoxCfgTerminal;
+	TLabel *LabelCfgTerminal;
+	TComboBox *ComboBoxComKey;
+	TComboBox *ComboBoxComTerminal;
+	TComboBox *ComboBoxComPrinter;
+	TSpeedButton *SpeedButtonSaveCfg;
+	TLabel *LabelCfgKey;
+	TLabel *LabelCfgTerm;
+	TLabel *LabelCfgPrinter;
+	TCheckBox *CheckBoxCfgUpdate;
+	TImageList *ImageListBtn;
+	TTimer *TimerFetchData;
+	TLabel *LabelConfig;
+	TSpeedButton *SpeedButtonTestCfg;
+	TComboBox *ComboBoxTxtGame;
+	TLabel *LabelTxtGame;
+	TLabel *LabelTxtKind;
+	TComboBox *ComboBoxTxtKind;
+	TLabel *LabelTxtTerminal;
+	TComboBox *ComboBoxTxtTerminal;
+	TSpeedButton *SpeedButtonTxtPrint;
+	TOpenDialog *OpenDialogTxt;
+	TPanel *PanelMonitorGroup;
+	TButton *ButtonTxtClear;
+	TComboBox *ComboBoxSkinName;
+	TCppWebBrowser *WebBrowser;
+	TIdHTTPServer *IdHTTPServer;
+	TPanel *PanelServer;
+	TLabel *Label2;
+	TSpeedButton *SpeedButtonServer;
+	TButton *ButtonTestData;
+	TTimer *TimerBatch;
+	TPopupMenu *PopupMenu;
+	TMenuItem *Quit;
+	TMenuItem *N1;
+	TImageList *ImageListMenu;
+	TLabel *LabelTerminalMsg;
+	TLinkLabel *LinkLabel;
+	void __fastcall FormResize(TObject *Sender);
+	void __fastcall FormCloseQuery(TObject *Sender, bool &CanClose);
+	void __fastcall FormCreate(TObject *Sender);
+	void __fastcall TimerClockTimer(TObject *Sender);
+	void __fastcall TabSheetMonitorResize(TObject *Sender);
+	void __fastcall SpeedButtonTxtLoadClick(TObject *Sender);
+	void __fastcall TabSheetConfigResize(TObject *Sender);
+	void __fastcall ComboBoxCfgTerminalChange(TObject *Sender);
+	void __fastcall CheckBoxCfgUpdateClick(TObject *Sender);
+
+	void __fastcall GetComPortList(TStrings *lstComm);
+	void __fastcall SpeedButtonSaveCfgClick(TObject *Sender);
+	void __fastcall ComboBoxTxtTerminalChange(TObject *Sender);
+	void __fastcall ComboBoxTxtGameChange(TObject *Sender);
+	void __fastcall ButtonTxtClearClick(TObject *Sender);
+	void __fastcall SpeedButtonTxtPrintClick(TObject *Sender);
+	void __fastcall ComboBoxSkinNameChange(TObject *Sender);
+	void __fastcall IdHTTPServerCommandGet(TIdContext *AContext, TIdHTTPRequestInfo *ARequestInfo,
+          TIdHTTPResponseInfo *AResponseInfo);
+	void __fastcall SpeedButtonServerClick(TObject *Sender);
+	void __fastcall ButtonTestDataClick(TObject *Sender);
+	void __fastcall TimerBatchTimer(TObject *Sender);
+	void __fastcall QuitClick(TObject *Sender);
+	void __fastcall LinkLabelLinkClick(TObject *Sender, const UnicodeString Link, TSysLinkType LinkType);
+	void __fastcall FormDestroy(TObject *Sender);
+
+private:	// User declarations
+	Gdiplus::GdiplusStartupInput m_gdiplusStartupInput;
+	ULONG_PTR m_gdiplusToken;
+	bool FetchTaskIsRun;
+	int webLogin;			//µÇÂ¼×´Ì¬£¬0Î´µÇÂ¼£¬1ÒÑµÇÂ¼µ«Î´»ØÖ÷Ò³£¬2µÇÂ¼ÇÒ·µ»ØÖ÷Ò³ÁË£¬-1µÇÂ¼´íÎóÖØÐÂ·µ»ØÖ÷Ò³
+
+public:		// User declarations
+	__fastcall TMainForm(TComponent* Owner);
+	CController *controller;
+	TActionList *actionList;
+
+	AnsiString name,passwd;
+
+	int GetEncoderClsid(const WCHAR* format, CLSID* pClsid);
+	bool SaveStubPngImage(CTerminal *terminal);
+};
+//---------------------------------------------------------------------------
+extern PACKAGE TMainForm *MainForm;
+//---------------------------------------------------------------------------
+#endif

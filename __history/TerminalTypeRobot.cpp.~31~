@@ -1,0 +1,261 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "TerminalTypeRobot.h"
+#include "Terminal.h"
+#include "TerminalPanel.h"
+#include "TerminalCommPort.h"
+#include "TerminalMonitorPanel.h"
+#include "MediaSupport.h"
+#include "Controller.h"
+#include "TransComm4Socket.h"
+#include "TerminalConfig.h"
+#include "TicketCenterNodeApp.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+//---------------------------------------------------------------------------
+__fastcall CTerminalTypeRobot::CTerminalTypeRobot(CTerminal *term, bool CreateSuspended): TThread(CreateSuspended)
+{
+	terminal =term;
+	InitOK =false;
+	CanType =false;
+	SuspendTimestamp =-1;
+}
+//---------------------------------------------------------------------------
+void __fastcall CTerminalTypeRobot::Execute()
+{
+	while (! Terminated){
+        if (!CanType || !InitOK){	//未初始化或非执行打字任务时就等待
+            Sleep(250);
+			continue;
+		}
+		//尝试是否自动加载数据
+		if (terminal->panel->TicketGrid->Cells[1][1]==""){     //自动取票还是停下等待
+			terminal->panel->AutoLoadData();  					//自动加载数据
+		}
+		//自动取票也取不到了，后台打完了，自动停下来，等待更换游戏，//停下等待人工处理
+		if (terminal->panel->TicketGrid->Cells[1][1]==""){
+			terminal->panel->EnableControls();
+			Sleep(1898);	//停一会，然后继续自动加载，为啥是1898毫秒呢？我就喜欢。I'm love it!
+			continue;
+		}
+		//正式的处理一张票
+		try{
+			if (terminal->panel->RadioTicketMode->Checked) {		//出票模式
+				PrintTicket();
+			}else{													//兑奖模式
+				CashPrize();
+			}
+		}catch(...){
+			CanType =false;
+			ShowMessage("处理票过程中出现异常！已自动暂停处理，请谨慎操作，注意数据完整性。");
+			terminal->panel->EnableControls();			//让游戏和类型都可选
+			terminal->panel->BitBtnPrint->Caption ="继续处理（&P）";
+		}
+
+		SuspendTimestamp =-1;						//每次处理完一张不管正常不正常，处理票接数据的时间戳都设置为-1，避免票根数据被清空或超界
+		terminal->stubDataLength =0;                //同时也清理打印缓冲区
+		memset(terminal->stubBuffer, 0, sizeof(terminal->stubBuffer));
+
+		Sleep(50);
+	}
+}
+//---------------------------------------------------------------------------
+void CTerminalTypeRobot::Wakeup(int money, AnsiString stub){
+	verifyMoney =money;
+	stubString =stub;
+	SuspendTimestamp =-1;
+	this->Suspended =false;
+}
+//---------------------------------------------------------------------------
+void CTerminalTypeRobot::PrintTicket(){
+	//清理本地数据
+	verifyMoney =0;	//等待外部传进来的验证结果
+	stubString ="";	//清空票面文本
+	//开始打印，取一张票
+	AnsiString serialNo ="";	//terminal->panel->TicketGrid->Cells[1][1];
+	AnsiString tickstr ="";		//terminal->panel->TicketGrid->Cells[2][1];
+	int times =1;				//StrToInt(terminal->panel->TicketGrid->Cells[3][1]);
+	AnsiString echoName ="";	//terminal->panel->TicketGrid->Cells[4][1];
+	AnsiString gameAdapter="";	//terminal->panel->TicketGrid->Cells[5][1];
+	AnsiString gameId ="";		//gameAdapter.SubString(0, 4);
+	AnsiString stakeId ="";		//gameAdapter.SubString(6, 1);
+	int stakeLen =14;			//StrToInt(terminal->panel->TicketGrid->Cells[6][1]);
+	bool onlineOrder =true;		//StrToBool(terminal->panel->TicketGrid->Cells[7][1]);
+	//查找当前票节点，刷新终端监控信息
+	currentStake =terminal->findStakeById(gameId, stakeId);
+	terminal->panel->EchoStakeString(1);
+	//计算两个不同类型的彩票，中间界面跳转需要的按键，并打印跳转
+	AnsiString jumpStr =terminal->getJumpInnerCodeString(lastStake, currentStake);
+	TypeInnerString(jumpStr);
+	//看是否需要在打印这张票之前加前缀，福彩可能经常用
+	if (currentStake->HasAttribute(L"Prefix") && currentStake->Prefix!="") {
+		TypeInnerString(currentStake->Prefix);
+	}
+	//调用动态库函数，生成打印号码的按键序列，不包括最后的确认！
+	AnsiString tickKeyStr =terminal->GeneralTicketKeyStr((gameId +"-" +stakeId), tickstr, times);
+	TypeInnerString(tickKeyStr);
+	//看是否需要在打印这张票号码输完后再加后缀，追加等经常用
+	if (currentStake->HasAttribute(L"Postfix") && currentStake->Postfix!="") {
+		TypeInnerString(currentStake->Postfix);
+	}
+	if (!CanType) return;					//只要还没最后的确认，号码录入过程中就可以终止
+	//准备接收数据清空，并按确认键出票防止丢失漏掉数据
+	terminal->panel->BitBtnPrint->Enabled =false;		//已经确认后暂时让终止按键失效，避免数据或显示与实际不符
+	SuspendTimestamp =GetTickCount();		//设置时间戳
+	TypeInnerString(terminal->xmlConfig->PrintConfirmInnerKey);
+	//在这直接把本线程挂起，等待接收数据的任务唤醒通知，并且验证票面金额的结果也进来了
+	this->Suspended =true;
+	Sleep(30);						//这加上一点延时，避免线程访问资源冲突，可能是唤醒函数返回时容易资源冲突，或是也是为切纸指令后的几个字节留出时间，反正这有点延时就解决了
+	terminal->panel->BitBtnPrint->Enabled =true;
+	//等到了结果被唤醒时
+	if (stubString =="") {    //长度不够啊，也不清空数据，等着下次一起保存也行
+		MainForm->controller->mediaSupport->SoundErrorLocal();
+		terminal->errMsg ="当前彩票票面信息不全，应该是没有正常出票，已暂停请处理。";
+		CanType =false;
+		terminal->panel->BitBtnPrint->Caption ="继续出票（&P）";
+		return;
+	}
+	//通过判断金额，如未通过验证则：文件自动改名，提示报警，停下人工处理
+	/*if (verifyMoney <=0){
+		MainForm->controller->mediaSupport->SoundErrorLocal();
+		AnsiString binFileDir =MainForm->controller->merchant->BinFileDir;
+		RenameFile(binFileDir +serialNo +".bin", binFileDir +"err-" +serialNo +".bin");
+		terminal->errMsg ="当前彩票票面验证错误！请检查终端机出票是否正常，已暂停请处理。";
+		CanType =false;
+		terminal->panel->BitBtnPrint->Caption ="继续出票（&P）";
+		return;
+	}  */
+	//向服务器后台提交修改本张票的打印状态
+	//if (MainForm->controller->ModeOnline && onlineOrder){		//在线模式且非文本出票才提交，离线模式或文本出票时跳过
+	if (onlineOrder){		//在线模式且非文本出票才提交，离线模式或文本出票时跳过
+		/*  暂不由出票程序上传图片，交由后台根据票根数据生成，这样处理较好
+		if (!MainForm->SaveStubPngImage(terminal)){		//保存票根图像为png格式，等待上传
+			MainForm->controller->mediaSupport->SoundErrorNet();
+			terminal->errMsg ="当前彩票已经正常打印，但处理票面图像过程失败！票号： " +serialNo;
+			CanType =false;
+			terminal->panel->BitBtnPrint->Caption ="继续出票（&P）";
+			return;
+		}
+		*/
+		int retMoney =0;	//MainForm->controller->transComm->PrintTicket(serialNo, terminal->xmlConfig->TerminalID, stubString, 0, terminal->isPaperTicket);
+		if (retMoney !=0){		//
+			MainForm->controller->mediaSupport->SoundErrorNet();
+			terminal->errMsg ="当前彩票已经正常打印，但系统修改打印标记发生错误，请核对！票号： " +serialNo;
+			CanType =false;
+			terminal->panel->BitBtnPrint->Caption ="继续出票（&P）";
+			return;
+		}
+		//本地数据修改状态监控更新
+		bool retPrint =0;	//MainForm->controller->dbSupport->PrintComplete(serialNo, terminal->xmlConfig->TerminalID, stubString, verifyMoney);
+		if (retMoney !=0){		//
+			MainForm->controller->mediaSupport->SoundErrorNet();
+			terminal->errMsg ="当前彩票已经正常打印，但系统修改本地数据库的发生错误，票号： " +serialNo +"，需要退出程序重新进入，请谨慎处理！";
+			CanType =false;
+			terminal->panel->BitBtnPrint->Caption ="继续出票（&P）";
+			return;
+		}
+	}
+	//统计数据更新，包括在线的和本地的
+	terminal->monitor->ticketCount ++;
+	terminal->monitor->ticketMoney +=verifyMoney;
+	//切换当前与上一注记录
+	terminal->errMsg ="";		//清理错误消息
+	lastStake =currentStake;	//默认切换
+	if (currentStake->HasAttribute(L"FinishedNode") && currentStake->FinishedNode!="") {	//看打印完后，是否自动转到另一投注方式的起始位置，如果是的话就自动转过去
+		lastStake =terminal->findStakeByNode(currentStake->FinishedNode);
+	}
+	currentStake =NULL;
+	//刚打印完的这张放到右边,完成列表顶部第一行,待打的彩票，往上挪
+	terminal->panel->TicketGrid->InsertBlankRow(1);
+	terminal->panel->TicketGrid->Cells[1][1] =serialNo;
+	terminal->panel->TicketGrid->Cells[2][1] =tickstr;
+	terminal->panel->TicketGrid->Cells[3][1] =times;
+	terminal->panel->TicketGrid->Cells[4][1] =echoName;
+	terminal->panel->TicketGrid->Cells[5][1] =gameId;
+	terminal->panel->TicketGrid->Cells[6][1] =stakeId;
+	terminal->panel->TicketGrid->Cells[7][1] =onlineOrder?"1" :"0";
+	//声音OK
+	if (terminal->panel->CheckBoxSound->Checked) {
+		MainForm->controller->mediaSupport->SoundOK();
+	}
+}
+//---------------------------------------------------------------------------
+void CTerminalTypeRobot::CashPrize(){
+	//开始打印，取一张票
+	AnsiString ticketId ="";	//terminal->panel->GridPending->Cells[1][1];
+	AnsiString stubSerial="";	//terminal->panel->GridPending->Cells[2][1];
+	int bonus =5;				//StrToInt(terminal->panel->GridPending->Cells[3][1]);
+	AnsiString gameName ="";	//terminal->panel->GridPending->Cells[4][1];
+	AnsiString gameCode ="";	//terminal->panel->GridPending->Cells[5][1];
+	//解析数据，提取票面信息，显示在右侧彩票信息窗口中，刷新终端监控信息
+	terminal->panel->EchoStakeString(1);
+	//发送序列码按键
+	TypeInnerString(stubSerial);
+	TypeInnerString(terminal->xmlConfig->CashPrizeInnerKeyList);		//发送的兑奖按键在配置文件中
+	if (terminal->xmlConfig->LotteryKind =="FC") {	//福彩在兑奖时打印出兑奖单
+		//准备接收数据清空，并按确认键出票防止丢失漏掉数据
+		memset(terminal->stubBuffer, 0, sizeof(terminal->stubBuffer));
+		terminal->stubDataLength =0;
+		//在这直接把本线程挂起，等待接收数据的任务唤醒通知，并且验证票面金额的结果也进来了
+		SuspendTimestamp =GetTickCount();
+		this->Suspended =true;
+		//终端端口传过来的兑奖结果已经显示在右侧票根信息窗口中，判断stubString里边的中奖金额金额是否相符TODO
+		int idx1 =stubString.Pos("兑奖奖金:");
+		int idx2 =stubString.Pos(".00元");
+		if (idx1 >0 && idx2 >0){
+			int djdMoney =StrToInt(stubString.SubString(idx1 +9, idx2 -idx1 -9).Trim());
+			if (djdMoney !=bonus) {
+				MainForm->controller->mediaSupport->SoundErrorNet();
+				terminal->errMsg ="本张彩票后台数据与终端的中奖金额不符，请暂停兑奖并核对解决！票号： " +ticketId;
+				CanType =false;
+				terminal->panel->BitBtnPrint->Caption ="继续兑奖（&B）";
+				return;
+			}
+		}
+	}else{		//体彩没有兑奖单，只能等待固定时间了
+		Sleep(2000);
+	}
+	//远程数据修改状态TODO
+//	MainForm->controller->transComm->CashPrize(ticketId, bonus);
+	//修改监控累计数据
+	terminal->monitor->prizeCount ++;
+	terminal->monitor->prizeMoney +=bonus;
+	//把兑奖完的放到右边
+	terminal->panel->TicketGrid->InsertBlankRow(1);
+	//刚打印完的这张放完成列表顶部第一行
+	terminal->panel->TicketGrid->Cells[1][1] =ticketId;
+	terminal->panel->TicketGrid->Cells[2][1] =stubSerial;
+	terminal->panel->TicketGrid->Cells[3][1] =IntToStr(bonus);
+	terminal->panel->TicketGrid->Cells[4][1] =gameName;
+	terminal->panel->TicketGrid->Cells[5][1] =gameCode;
+	terminal->panel->TicketGrid->Cells[6][1] ="20";
+	terminal->panel->TicketGrid->Cells[7][1] ="1";
+	Sleep(500);
+}
+
+//打开串口并设置有关参数
+bool CTerminalTypeRobot::Init(AnsiString commPort, AnsiString comParam){
+    return true;
+}
+
+//打印整张票的键盘内码，此处转换为标准键盘码，下发到键盘串口
+void CTerminalTypeRobot::TypeInnerString(AnsiString str){
+	if (str =="") return;
+	for (int i=1;i<=str.Length();i++){
+		_di_IXMLKeyboardCodeType keyItem =terminal->findKeyboardCodeByInnerCode(AnsiString(str[i]));
+		if (keyItem !=NULL){
+			TypeAsciiCode(keyItem->KeyboardValue);
+		}
+		Sleep(terminal->panel->TrackBarKey->Position);
+	}
+}
+
+//----------------------------------------------------------------------------------
+void CTerminalTypeRobot::TypeAsciiCode(AnsiString asciiCode){
+	//调用BOX方法直接下发
+	//TODO:
+
+}
+

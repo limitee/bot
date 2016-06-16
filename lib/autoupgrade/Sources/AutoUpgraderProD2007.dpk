@@ -1,0 +1,47 @@
+package AutoUpgraderProD2007;
+
+{$R *.res}
+{$R '_AUReg.dcr'}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  vcl,
+  designide;
+
+contains
+  _AUReg in '_AUReg.pas',
+  auAutoUpgrader in 'auAutoUpgrader.pas',
+  auAutoUpgraderAddURL in 'auAutoUpgraderAddURL.pas',
+  auAutoUpgraderEditor in 'auAutoUpgraderEditor.pas',
+  auAutoUpgraderPassword in 'auAutoUpgraderPassword.pas',
+  auAutoUpgraderUpgradeMsg in 'auAutoUpgraderUpgradeMsg.pas',
+  auAutoUpgraderWizard in 'auAutoUpgraderWizard.pas',
+  auExtAssociation in 'auExtAssociation.pas',
+  auHTTP in 'auHTTP.pas',
+  auHTTPProxyEditor in 'auHTTPProxyEditor.pas',
+  auThread in 'auThread.pas',
+  auUtils in 'auUtils.pas';
+
+end.

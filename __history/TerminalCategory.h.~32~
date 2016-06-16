@@ -1,0 +1,47 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalCategoryH
+#define TerminalCategoryH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+#include <Classes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.StdCtrls.hpp>
+#include <Vcl.Forms.hpp>
+#include <Vcl.ExtCtrls.hpp>
+#include <Vcl.ImgList.hpp>
+
+class CTerminal;
+
+class CTerminalCategory : TCategoryPanel
+{
+__published:	// IDE-managed Components
+	TShape *ShapeStatus;
+	TEdit *EchoDescribe;
+	TEdit *EchoSum;
+	//单击激活为当前终端
+	void __fastcall MonitorPanelClick(TObject *Sender);
+
+private:	// User declarations
+	CTerminal *terminal;
+
+	bool onlineStatus, onlineStatusChanged;
+
+	bool boxConnectStatus;
+
+public:		// User declarations
+	__fastcall CTerminalCategory(TCategoryPanelGroup *Owner, CTerminal *term);
+
+	void __fastcall SetTerminalActive();		//设置本终端成为当前的激活终端，主要是界面上的处理
+	void __fastcall RefreshInfo();
+
+	void SetConnectionStatus(bool online);
+	void SetBoxStatus(bool connected);
+
+	int ticketCount;
+	int ticketMoney;
+
+	int prizeCount;
+	double prizeMoney;
+};
+
+#endif

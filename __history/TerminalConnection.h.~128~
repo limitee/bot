@@ -1,0 +1,74 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalConnectionH
+#define TerminalConnectionH
+//---------------------------------------------------------------------------
+
+#include <vcl.h>
+#include <System.Win.ScktComp.hpp>
+
+#include "DefineStruct.h"
+
+/******************************************************
+*  实现与后台的通信接口协议
+******************************************************/
+
+class CTerminal;
+
+struct ConnMessage{
+	AnsiString cmd;
+	AnsiString body;
+};
+
+class CTerminalConnection : public TThread
+{
+	public:
+		__fastcall CTerminalConnection(CTerminal *t, bool CreateSuspended);
+
+		void __fastcall Connect();
+		void __fastcall DisConnect();
+
+		bool isConnected;
+
+		//登录，发送本终端编号
+		bool Login();
+		bool HeartBeat();
+
+		//回复结果
+		bool ReplyStub(Stub stub);
+
+		//两个备份的HTTP接口，重置异常票或者补录票根，使用MainForm的控件
+		//bool HttpResetTicket(Ticket *ticket);
+		//bool HttpUpdateTicketStub(Stub stub);
+		//bool HttpReport(AnsiString report);
+
+	protected:
+		//下发线程处理消息队列的下发
+		TList *sendMsgList;
+		void __fastcall Execute();
+
+	private:
+		CTerminal *terminal;
+		TClientSocket *ClientSocket;
+
+		void __fastcall ClientSocketConnect(TObject *Sender, TCustomWinSocket *Socket);
+		void __fastcall ClientSocketDisconnect(TObject *Sender, TCustomWinSocket *Socket);
+		void __fastcall ClientSocketError(TObject *Sender, TCustomWinSocket *Socket, TErrorEvent ErrorEvent, int &ErrorCode);
+		void __fastcall ClientSocketRead(TObject *Sender, TCustomWinSocket *Socket);
+
+		//处理报文
+		void HandleMessage(AnsiString head, AnsiString body);
+
+		bool AddMessageQueue(AnsiString cmd, AnsiString body);
+
+		//解析消息体
+		void ParserRequest(AnsiString body, Request *request);
+
+		BYTE buff[16384];
+		int buffLen;
+
+		AnsiString PackageHeadJson(AnsiString cmd, AnsiString body);
+		//
+		AnsiString HttpPost(AnsiString cmd, AnsiString body);
+};
+
+#endif

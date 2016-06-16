@@ -1,0 +1,76 @@
+{*******************************************************************************
+
+  AutoUpgrader Professional
+  FILE: auExtAssociation.pas - ExtAssociation component.
+
+  Copyright (c) 1998-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+*******************************************************************************}
+
+unit auExtAssociation;
+
+interface
+
+uses
+  Windows, Classes, Controls, Graphics;
+
+type
+  TauShellExtAccessMode = (amReadOnly, amReadWrite);
+  TauExtAssociation = class(TComponent)
+  private
+    FAccessMode: TauShellExtAccessMode;
+    FExtension: String;
+    FExecutableFile: String;
+    FExtDescription: String;
+    FFileDescription: String;
+    FParamString: String;
+
+    FIconFile: String;
+    FIconIndex: Integer;
+    FLargeIcon: TIcon;
+    FSmallIcon: TIcon;
+
+    procedure SetExtension(Value: String);
+    procedure SetExecutableFile(Value: String);
+    procedure SetExtDescription(Value: String);
+    procedure SetFileDescription(Value: String);
+    procedure SetParamString(Value: String);
+    procedure SetIconFile(Value: String);
+    procedure SetIconIndex(Value: Integer);
+    procedure SetIcon(Value: TIcon);
+
+    function  CheckAccessMode: Boolean;
+    procedure GetExtensionInfo;
+    procedure DoInstallExtension;
+  public
+    constructor Create(aOwner: TComponent); override;
+    destructor Destroy; override;
+
+    function InstallExtension(Extension, ExecutableFile, ParamString,
+                              ExtDescription, FileDescription,
+                              IconFile: String; IconIndex: Integer): Boolean;
+    function UninstallExtension(Ext: String): Boolean;
+  published
+    property AccessMode: TauShellExtAccessMode read FAccessMode write FAccessMode;
+    property EXTENSION: String read FExtension write SetExtension;
+    property ExecutableFile: String read FExecutableFile write SetExecutableFile;
+    property ExtDescription: String read FExtDescription write SetExtDescription;
+    property FileDescription: String read FFileDescription write SetFileDescription;
+    property ParamString: String read FParamString write SetParamString;
+
+    property IconFile: String read FIconFile write SetIconFile;
+    property IconIndex: Integer read FIconIndex write SetIconIndex;
+    property LargeIcon: TIcon read FLargeIcon write SetIcon;
+    property SmallIcon: TIcon read FSmallIcon write SetIcon;
+  end;
+
+implementation

@@ -1,0 +1,30 @@
+//---------------------------------------------------------------------------
+#ifndef LotteryStructH
+#define LotteryStructH
+
+#include <vcl.h>
+
+#define HOME_PAGE		"http://192.168.2.198/lotterymanager";
+#define LOGIN_URL		"http://192.168.2.198/lotterymanager/login_ticket.jsp";
+#define GATEWAY_IP		"192.168.2.2";
+#define CONFIG_File		"app.xml"
+#define LOG_FILE_NAME	"log.txt"
+#define TICKET_DB_FILE	"ticket.db"
+
+typedef struct StructTicket
+{
+	AnsiString ticketId;		//票号
+	int stakeLen;				//长度
+	AnsiString ticketNumbers;	//投注号码
+	int multiple;				//倍投数
+	AnsiString gameId;			//游戏
+	AnsiString gameAdapterId;	//玩法
+	int money;					//金额
+	AnsiString terminalId;		//处理打印的终端号
+	int status;					//0 待取	1 取走待打	2 出票完成
+	AnsiString stub;			//票面明文
+}::Ticket;		//定义为全局性的结构
+
+
+#endif
+

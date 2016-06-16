@@ -1,0 +1,94 @@
+//---------------------------------------------------------------------------
+#ifndef LotteryStructH
+#define LotteryStructH
+
+#include <vcl.h>
+
+#define LOG_FILE_NAME	"log.txt"
+
+#define LOGIN_URL		"http://www.xdbao.cn:4000/center_login.html"
+#define GATE_WAY		"http://www.xdbao.cn:4000/api/data"
+
+//#define LOGIN_URL		"http://123.56.177.229:4000/center_login.html"
+//#define GATE_WAY		"http://123.56.177.229:4000/api/data"
+
+#define	CMD_CENTER_LOGIN	"CR01"
+
+#define	CMD_TERMINAL_LOGIN	"T01"
+#define	CMD_TICKET			"T02"
+#define CMD_BONUS 			"T03"
+#define CMD_QUERY_TERM		"T04"
+#define CMD_QUERY_RECEIPT	"T05"
+
+#define CMD_HEART_BEAT 		"T10"
+#define CMD_TICKET_RESET 	"T11"
+#define CMD_STUB_REPAIR 	"T12"
+#define CMD_STUB_REPORT 	"T13"
+
+enum WorkStatus{
+	ERR =-1, 	      	//错误
+	INIT =0,            //初始化中
+	LOGON =1,           //终端机登录中
+	IDLE =5,            //空闲
+	PRINT =6,           //忙，正在打印出票
+	AWARD =7,           //忙，正在刷票兑奖
+	REPORT =8           //忙，正在查询或报表统计
+};
+
+//定义网络通信请求的各类数据结构
+enum RequestTypeEnum{ TICKET =1, BONUS =2, QUERY =3 };
+
+class Request{
+	public:
+		virtual ~Request(){};	//析构函数尽量声明为虚函数，避免delete派生类对象时内存泄漏？
+
+		RequestTypeEnum reqType;
+};
+
+class Ticket :Request{
+	public:
+		Ticket(){
+			reqType =TICKET;
+			fileData =false;
+		}
+
+		int id;				//票号
+		AnsiString number;	//投注号码
+		int multiple;		//倍投数
+		int icount;			//注数
+		int amount;			//金额
+		AnsiString gameId;  //游戏
+		AnsiString playType;
+		AnsiString betType;
+
+		bool fileData;		//是否为本地文件出票时用
+};
+
+class Bonus :Request{
+	public:
+		Bonus(){ reqType =BONUS; }
+
+		int id;					//票号
+		AnsiString seq;			//序列码
+		double bonus;			//中奖金额
+		double bonus_after_tax;	//税后奖金
+};
+
+class Query :Request{
+	public:
+		Query(){ reqType =QUERY; }
+		AnsiString queryCmdType;	//保存查询的命令类型，用于区分不同的查询请求，直接使用命令字
+
+		AnsiString gameId;  //查询奖期信息
+		int type;			//类型，0为查询当前期，1为上期
+};
+
+struct Stub{
+	Request *request;       //对应请求对象的地址，用完删除
+	int status;				//状态，1成功，0失败
+	int money;				//票根上解析出的金额
+	AnsiString stub;		//票根文本
+};
+
+#endif
+

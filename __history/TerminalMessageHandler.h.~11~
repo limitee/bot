@@ -1,0 +1,22 @@
+//---------------------------------------------------------------------------
+
+#ifndef TerminalMessageHandlerH
+#define TerminalMessageHandlerH
+//---------------------------------------------------------------------------
+
+#include "lib\jsoncpp\json.h"
+
+class CTerminalMessageHandler
+{
+	public:
+		CController();
+		virtual ~CController();
+
+	private:
+
+
+
+}
+
+#endif
+

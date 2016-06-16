@@ -1,0 +1,106 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "TerminalBonusRobot.h"
+
+#include "Terminal.h"
+#include "TerminalPanel.h"
+#include "TerminalCategory.h"
+#include "TerminalConfig.h"
+#include "TerminalBox.h"
+#include "TerminalConnection.h"
+
+#include "MediaSupport.h"
+#include "Controller.h"
+#include "TicketCenterNodeApp.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+//---------------------------------------------------------------------------
+__fastcall CTerminalBonusRobot::CTerminalBonusRobot(CTerminal *term, bool CreateSuspended): TThread(CreateSuspended){
+	terminal =term;
+}
+//---------------------------------------------------------------------------
+void __fastcall CTerminalBonusRobot::Execute(){
+	Sleep(5000);
+	while (! Terminated){
+		//兑奖按键
+		SendBonusKeys();
+		//在这直接把本线程挂起，等待接收数据的任务唤醒通知，并且验证票面金额的结果也进来了
+		this->Suspended =true;
+		Sleep(30);	//这加上一点延时，避免线程访问资源冲突，可能是唤醒函数返回时容易资源冲突，或是也是为切纸指令后的几个字节留出时间，反正这有点延时就解决了
+		//处理票根
+		HandleStub();
+		//终端复位
+		terminal->ResetTerminalContext();
+        //挂起，等下次
+		Suspended =true;
+		Sleep(50);
+	}
+}
+
+//---------------------------------------------------------------------------
+bool CTerminalBonusRobot::SetCurrentBonus(Bonus bonus){
+	if (terminal->status !=WorkStatus::IDLE) return false;
+	terminal->panel->BitBtnPrint->Caption ="兑奖中……";
+	terminal->panel->BitBtnPrint->Enabled =false;	//暂时让终止按键失效
+    terminal->panel->TicketGrid->SetPrizeMode();    //表头，兑奖模式
+	currentBonus =bonus;
+	terminal->status =WorkStatus::AWARD;
+	terminal->needReset =false;                     //重设不能复位
+	Suspended =false;
+
+	return true;
+}
+
+//---------------------------------------------------------------------------
+void CTerminalBonusRobot::NotifyStub(int money, AnsiString stub){
+	terminal->currentStub.bonus =currentBonus;
+	terminal->currentStub.status =1;
+	terminal->currentStub.money =money;
+	terminal->currentStub.stub =stub;
+	this->Suspended =false;
+}
+
+//---------------------------------------------------------------------------
+void CTerminalBonusRobot::Stop(){
+    this->Terminate();
+}
+
+//---------------------------------------------------------------------------
+void CTerminalBonusRobot::SendBonusKeys(){
+	//把当前待出票放入列表第一行
+	terminal->panel->TicketGrid->Cells[1][1] =IntToStr(currentBonus.id);
+	AnsiString seq =currentBonus.seq;
+	terminal->panel->TicketGrid->Cells[2][1] =seq;
+	terminal->panel->TicketGrid->Cells[3][1] =IntToStr(currentBonus.bonus);
+	//发送序列码按键
+	terminal->box->TypeInnerString(terminal->xmlConfig->Keyboard->BobusPrefix);		//兑奖按键前缀
+	terminal->box->TypeInnerString(seq);
+	terminal->box->TypeInnerString(terminal->xmlConfig->Keyboard->BobusPostfix);		//兑奖按键后缀，体彩是F1打印兑奖回执
+    //设置时间戳，判断最大出票时间的超时参数
+	terminal->SuspendTimestamp =GetTickCount();
+}
+
+//---------------------------------------------------------------------------
+void CTerminalBonusRobot::HandleBonusStub(){
+	//由于网络或终端等错误状态，造成线程死等待，需要状态重置，不处理后半程
+	if (terminal->needReset){
+        Sleep(100);
+		return;
+	}
+	//上传后台兑奖回执单
+	terminal->connection->ReplyStub(terminal->currentStub, true);
+	//修改监控累计数据
+	terminal->monitor->prizeCount ++;
+	terminal->monitor->prizeMoney +=currentBonus.bonus;
+	//把兑奖完的放到右边
+	terminal->panel->TicketGrid->InsertBlankRow(1);
+	//刚打印完的这张放完成列表顶部第一行
+	for (int i = 1; i <= 7; i++) terminal->panel->TicketGrid->Cells[i][2] =terminal->panel->TicketGrid->Cells[i][1];
+	//声音OK
+	if (terminal->panel->CheckBoxSound->Checked) {
+		MainForm->controller->mediaSupport->SoundOK();
+	}
+}
+

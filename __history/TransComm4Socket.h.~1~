@@ -1,0 +1,50 @@
+//---------------------------------------------------------------------------
+
+#ifndef TransComm4SocketH
+#define TransComm4SocketH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+#include <Grids.hpp>
+#include "LotteryDefine.h"
+
+/******************************************************
+*  实现与后台的通信接口协议
+******************************************************/
+class CController;
+class CTerminal;
+
+class CTransComm
+{
+	public:
+		CTransComm(CController *p);
+		~CTransComm();
+
+		AnsiString cookie;
+
+		//获取服务器标准时间
+		AnsiString GetServerTimestamp();
+
+		//取未打印票
+		int GetPendingTickets(int count);
+		//打印完成通知，返回后台的金额，用于核对
+		int PrintTicket(AnsiString ticketId, AnsiString terminalId, AnsiString stub, int code, bool paper);
+
+		//取为兑奖票，直接放到表格指针对象中
+		int GetPendingPrizes(CTerminal *terminal, AnsiString gameId, AnsiString termId, int count);
+		//兑奖完成通知
+		bool CashPrize(AnsiString ticketId, int bonus);
+
+		//查询期次信息
+		void QueryTermList(AnsiString gameId, TStrings *terms);
+
+		//登录退出
+		bool Login(AnsiString name, AnsiString passwd);
+		bool Logout();
+
+	private:
+		CController *controller;
+		//与后台服务器交易通信，提交POST并获取应答文本
+		AnsiString TransComm(AnsiString cmd, AnsiString request);
+};
+
+#endif

@@ -1,0 +1,198 @@
+[Strings]
+AppID={08FA2B1B-9581-4871-B8FF-D7D9ABCB95EA}
+AdminRights=
+1=Uninstall AutoUpgrader Pro
+2=Installation package not found in selected folder.
+3=You need to have administrative rights on this computer to uninstall or repair this application.
+10=Removing file %s
+11=Removing registry entry %s
+12=Removing registry key %s
+13=Removing ini parameter from file %s
+14=Removing shortcut %s
+15=Removing folder %s
+16=Unregistering server %s
+17=Unregistering font %s
+18=Checking shared file %s
+19=Removing assembly %s
+20=Removing environment variable %s
+
+[Display]
+Charset=0
+ForceRemoveDataFiles=
+DialogFont=
+TitleFont=
+SubtitleFont=
+ProgressColor=
+ShowTitle=
+ShowSubtitle=
+
+[Dialog.DLG_START]
+Caption=Uninstall Program for AutoUpgrader Pro
+101=< Back
+102=Next >
+103=Cancel
+104=Ghost Installer Maintenance mode
+105=Please select one of the following options below.
+106=Uninstall AutoUpgrader Pro
+107=Repair AutoUpgrader Pro
+109=Select this option to remove AutoUpgrader Pro and all its components from your computer.
+110=Select this option to repair AutoUpgrader Pro. This option will reinstall the program with exactly the same components that were installed first time.
+
+[Dialog.DLG_BEFOREUNINSTALL]
+Caption=Uninstall Program for AutoUpgrader Pro
+Title=Uninstall for AutoUpgrader Pro
+Subtitle=This program will remove AutoUpgrader Pro and all its components from this computer.
+101=< Back
+102=Next >
+103=Cancel
+104=Are you sure you want to completely remove the AutoUpgrader Pro and all its components from your computer?||||To confirm the removal process press Next button.||||WARNING!  Be careful the uninstaller may also delete AutoUpgrader Pro settings and data directories. Please backup the data which is stored in subdirectories of AutoUpgrader Pro.
+105=Remove data files and folders created by AutoUpgrader Pro
+
+[Dialog.DLG_UNINSTALL]
+Caption=Uninstall Program for AutoUpgrader Pro
+Title=Uninstall Progress
+Subtitle=
+101=< Back
+102=Next >
+103=Cancel
+104=Uninstall actions proceeded:
+200=Preparing uninstall
+201=Uninstalling shortcuts
+202=Uninstalling registry entries
+203=Unregistering fonts
+204=Unregistering COM servers
+205=Removing files and folders
+206=Finishing uninstall
+
+[Dialog.DLG_UNINSTALLSUCCEEDED]
+Caption=Uninstall Program for AutoUpgrader Pro
+Title=Uninstall Succeeded
+Subtitle=
+102=Finish
+104=Ghost Installer successfully removed AutoUpgrader Pro and all its components from your computer.||||||Click on the Finish dialog button to exit the uninstallation process.
+
+[Dialog.DLG_BEFOREREPAIR]
+Caption=Uninstall Program for AutoUpgrader Pro
+Title=Repair for AutoUpgrader Pro
+Subtitle=This program will try to repair AutoUpgrader Pro.
+101=< Back
+102=Next >
+103=Cancel
+104=To confirm the repair process press Next button.||||ATTENTION!  Be careful the repair process may also reset AutoUpgrader Pro settings. Please backup the data which is stored in subdirectories of AutoUpgrader Pro.
+
+[Dialog.DLG_BROWSEFORSETUP]
+Caption=Uninstall Program for AutoUpgrader Pro
+Title=Browse for Packages
+Subtitle=
+101=< Back
+102=Next >
+103=Cancel
+104=Ghost Installer Maintenance could not locate installation package for AutoUpgrader Pro. This package is required to repair your application. Please specify a location for this package.
+105=Search for package in:
+107=Browse...
+200=Browse for Packages
+201=Select folder with installation package.
+
+[Dialog.DLG_DELSHARED]
+Caption=Remove shared file?
+101=The system indicates that the following shared file is no longer used by any programs.  If any programs are still using this file and it is removed, those programs may not function.  Are you sure you want to remove the shared file?||||Leaving this file will not harm your system.  If you are not sure what to do, it is suggested that you choose not to remove this shared component.
+103=File name:
+105=Located in:
+107=Yes
+108=Yes to all
+109=No
+110=No to all
+
+[Dialog.DLG_REBOOT]
+Caption=Uninstall Program for AutoUpgrader Pro
+Title=Computer Restart
+Subtitle=Uninstallation procedure needs to restart your system to remove application completely.
+101=< Back
+102=Next >
+103=Cancel
+104=Some components were not removed completely. For finishing uninstallation it is necessary to reboot your computer.
+105=Yes, reboot my computer now
+106=No, I'll reboot my computer later
+
+[SharedFiles]
+E:\MyDelphiCompents\AutoUpdate\Uninstall.exe=
+
+[CreateKeys]
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{08FA2B1B-9581-4871-B8FF-D7D9ABCB95EA}=
+
+[CreateDirs]
+E:\MyDelphiCompents\AutoUpdate\Sources=
+E:\MyDelphiCompents\AutoUpdate\Sources\Tools=
+E:\MyDelphiCompents\AutoUpdate\Sources\Tools\Upgrader=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages=
+
+[CopyFiles]
+E:\MyDelphiCompents\AutoUpdate\Sources\_AUReg.dcr=
+E:\MyDelphiCompents\AutoUpdate\Sources\_AUReg.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderAddURL.dfm=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderAddURL.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderEditor.dfm=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderEditor.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderPassword.dfm=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderPassword.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderUpgradeMsg.dfm=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderUpgradeMsg.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderWizard.dfm=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderWizard.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auDefines.inc=
+E:\MyDelphiCompents\AutoUpdate\Sources\auExtAssociation.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auHTTP.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auHTTPProxyEditor.dfm=
+E:\MyDelphiCompents\AutoUpdate\Sources\auHTTPProxyEditor.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auThread.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auUtils.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderLang.RES=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgraderLang.rc=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgrader.pas=
+E:\MyDelphiCompents\AutoUpdate\Sources\auAutoUpgrader.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD3.dpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD3.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD4.dpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD4.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD5.dpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD5.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD6.dpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD6.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB3.cpp=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB3.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB4.bpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB4.cpp=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB4.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB5.bpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB5.cpp=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB5.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB6.bpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB3.bpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB6.cpp=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProCB6.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD7.dpk=
+E:\MyDelphiCompents\AutoUpdate\Sources\AutoUpgraderProD7.res=
+E:\MyDelphiCompents\AutoUpdate\Sources\Tools\Upgrader\Upgrader3.exe=
+E:\MyDelphiCompents\AutoUpdate\Sources\Tools\Upgrader\Upgrader3.pas=
+E:\MyDelphiCompents\AutoUpdate\Readme.txt=
+E:\MyDelphiCompents\AutoUpdate\License.txt=
+
+[Shortcuts]
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\AutoUpgrader Pro.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\ReadMe.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\License Agreement.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for C++ Builder 6.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for C++ Builder 5.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for C++ Builder 4.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for C++ Builder 3.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for Delphi 7.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for Delphi 6.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for Delphi 5.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for Delphi 4.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Packages\for Delphi 3.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Uninstall AutoUpgrader Pro.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\Demo project for Delphi.lnk=
+D:\Documents and Settings\Administrator\「开始」菜单\程序\UtilMind\AutoUpgrader Pro\AutoUpgrader Pro Help.lnk=
+

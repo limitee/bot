@@ -1,0 +1,425 @@
+﻿// ---------------------------------------------------------------------------
+#include <vcl.h>
+#pragma hdrstop
+#include <inifiles.hpp>
+#include <Registry.hpp>
+#include <Vcl.Themes.hpp>
+#include "LotteryMerchantApp.h"
+#include "FrameMonitorGroup.h"
+#include "Terminal.h"
+#include "TerminalPanel.h"
+#include "TerminalMonitorPanel.h"
+#include "TerminalTypeRobot.h"
+#include "LotteryMerchant.h"
+#include "Controller.h"
+#include "MediaSupport.h"
+#include "TransComm4Socket.h"
+#include <mshtml.hpp>
+// ---------------------------------------------------------------------------
+#pragma package(smart_init)
+#pragma link "trayicon"
+#pragma link "gdiplus.lib"
+#pragma link "bcbie.lib"
+#pragma link "SHDocVw_OCX"
+#pragma resource "*.dfm"
+
+using namespace Gdiplus;
+
+TMainForm *MainForm;
+// ---------------------------------------------------------------------------
+__fastcall TMainForm::TMainForm(TComponent* Owner) : TForm(Owner) {
+	// 初始化GDI+
+	GdiplusStartup(&m_gdiplusToken, &m_gdiplusStartupInput, NULL);
+	webLogin =0;
+}
+// ---------------------------------------------------------------------------
+void __fastcall TMainForm::FormCreate(TObject *Sender) {
+	controller = new CController();
+	// 创建一个ActionList用于动态保存各个标签页的Action
+	actionList = new TActionList(MainForm);
+	// 读取本地的一些设置，或是上次的配置参数
+	TIniFile *ini = new TIniFile(GetCurrentDir() + "\\app.ini");
+	MainForm->Width = ini->ReadInteger("FormSize", "Width", 848);
+	MainForm->Height = ini->ReadInteger("FormSize", "Height", 558);
+	delete ini;
+	//
+	FrameMonitor =new TFrameMonitor(this); 		   //用这个Frame，主要是用来加竖滚动条的，并且支持鼠标滑轮滚动
+	FrameMonitor->Parent =PanelMonitorGroup;
+	//文件打印内容明细
+	StringGridTxt->Cells[0][0] ="行数";
+	StringGridTxt->Cells[1][0] ="彩票号码";
+	StringGridTxt->Cells[2][0] ="倍";
+	for (int i =0; i <StringGridTxt->RowCount; i++) {
+		StringGridTxt->Cells[0][i+1] =IntToStr(i +1);
+	}
+	//后台管理浏览器加载，防止Document设置Cookie时为空
+	WideString HomePage =LOGIN_URL;
+	WebBrowser->Navigate(HomePage.c_bstr());
+	//显示登录页并且最大化窗口
+	PageControl->ActivePageIndex =0;
+	MainForm->WindowState =wsMaximized;
+	//
+    controller->Init("lottchina", false);
+}
+// ---------------------------------------------------------------------------
+void __fastcall TMainForm::FormCloseQuery(TObject *Sender, bool &CanClose) {
+	// 保存一些设置到本地配置文件，如窗口大小等
+	TIniFile *ini = new TIniFile(GetCurrentDir() + "\\app.ini");
+	ini->WriteString("FormSize", "Width", MainForm->Width);
+	ini->WriteString("FormSize", "Height", MainForm->Height);
+	// 各不同编号的终端机参数，如按键延时、剩余票纸、兑奖大于500的输入密码等等
+	for (int i = 0; i <controller->terminalGroup->Count; i++) {
+		CTerminal *terminal =(CTerminal *)controller->terminalGroup->Objects[i];
+		ini->WriteInteger(terminal->xmlConfig->TerminalID , "KeyboardInterval", terminal->panel->TrackBarKey->Position);
+		ini->WriteString(terminal->xmlConfig->TerminalID , "TerminalType", terminal->xmlConfig->TerminalType);	//保存本地，用作升级时检索动态库
+	}
+	delete ini;
+	CTrayIcon->Minimize();
+	CanClose =false;
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::FormResize(TObject *Sender) {
+	LinkLabel->Left =MainForm->Width -LinkLabel->Width -23;
+	if (MainForm->ClientWidth < 1024) {	// 窗口最小
+		MainForm->ClientWidth = 1024;
+	}
+	if (MainForm->ClientHeight < 600) {	// 窗口最小
+		MainForm->ClientHeight = 600;
+	}
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::TimerClockTimer(TObject *Sender) {
+	//显示时间，监控平台顶上的大标签
+	StatusBar->Panels->Items[0]->Text ="系统时间 " +TimeToStr(Now() +controller->timeStampOffset);
+}
+// ---------------------------------------------------------------------------
+void __fastcall TMainForm::TabSheetMonitorResize(TObject *Sender) {
+	//对各个终端监控调整位置
+	LabelTerminalMsg->Width =TabSheetMonitor->Width -LabelMonitor->Width -SpeedButtonFetch->Width -10;
+	LabelTerminalMsg->Left =(TabSheetMonitor->Width -LabelTerminalMsg->Width) /2 +49;
+	PanelMonitorGroup->Left =0;
+	PanelMonitorGroup->Width =TabSheetMonitor->Width;
+	PanelMonitorGroup->Height =TabSheetMonitor->Height -PanelMonitorGroup->Top;
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::SpeedButtonTxtLoadClick(TObject *Sender)
+{
+	if (ComboBoxTxtKind->Text =="") {
+		ShowMessage("请先选择好出票终端、玩法和游戏类型。");
+		return;
+	}
+	//打开彩票号码的文本文件，简单的校验一下，导入表格中
+	if (OpenDialogTxt->Execute()){
+		TStringList *lines =new TStringList();
+		lines->LoadFromFile(OpenDialogTxt->FileName);
+		if (lines->Count >=999) {
+			ShowMessage("每次文本出票张数不能超过1000张，请分次导入出票！");
+			delete lines;
+			return;
+		}
+		for (int i = 0; i <lines->Count; i++) {
+			AnsiString line =lines->operator [](i);
+			bool lineErr =false;
+			for (int k =1; k <=line.Length(); k++) {
+				if (!((line[k]>='0' && line[k]<='9') ||line[k]==','||line[k]==';'||line[k]==':'||line[k]=='-'||line[k]=='+'||line[k]==' '||line[k]=='\t')) {
+					lineErr =true;
+					break;
+				}
+			}
+			if (lineErr) {
+				ShowMessage("文件中第 " +IntToStr(i+1) +" 行好像有错误，请检查先跳过这行导入数据。");
+			}else{
+				int idx =line.Pos("\t");
+				if (idx >=1) {      //设置了倍数的
+					StringGridTxt->Cells[1][i +1] =line.SubString(0, idx).Trim();
+					StringGridTxt->Cells[2][i +1] =line.SubString(idx, line.Length()).Trim();
+				}else{				//没有TAB+倍数
+					StringGridTxt->Cells[1][i +1] =line;
+					StringGridTxt->Cells[2][i +1] ="1";		//默认都是1倍
+				}
+			}
+		}
+		if (lines->Count >0) {
+			ComboBoxTxtTerminal->Enabled =false;
+			ComboBoxTxtGame->Enabled =false;
+			ComboBoxTxtKind->Enabled =false;
+		}
+		delete lines;
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::TabSheetConfigResize(TObject *Sender)
+{
+	//调整位置和大小
+	PanelTerminalConfig->Width =TabSheetConfig->ClientWidth -6;
+	SpeedButtonSaveCfg->Left =PanelTerminalConfig->Width -191;
+	SpeedButtonTestCfg->Left =PanelTerminalConfig->Width -95;
+	//
+	StringGridTxt->Width =TabSheetConfig->ClientWidth -219;
+	StringGridTxt->ColWidths[1] =StringGridTxt->Width -99;
+	StringGridTxt->Height =TabSheetConfig->ClientHeight -123;
+	PanelTxt->Left =TabSheetConfig->ClientWidth -219;
+	PanelServer->Left =TabSheetConfig->ClientWidth -197;
+	//
+	ComboBoxSkinName->Left =TabSheetConfig->Width -127;
+	ButtonTestData->Left =TabSheetConfig->Width -195;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::ComboBoxCfgTerminalChange(TObject *Sender)
+{
+	//变换终端目标的选择时，把所有的都失效，防止被随意修改
+	CheckBoxCfgUpdate->Checked =false;
+	ComboBoxComKey->Enabled =false;
+	ComboBoxComTerminal->Enabled =false;
+	ComboBoxComPrinter->Enabled =false;
+	SpeedButtonSaveCfg->Enabled =false;
+	//显示当前终端的串口配置到各个控件
+	TIniFile *ini = new TIniFile(GetCurrentDir() + "\\app.ini");
+	ComboBoxComKey->Text = ini->ReadString(ComboBoxCfgTerminal->Text , "KeyboardCom", "");
+	ComboBoxComTerminal->Text = ini->ReadString(ComboBoxCfgTerminal->Text , "TerminalCom", "");
+	ComboBoxComPrinter->Text = ini->ReadString(ComboBoxCfgTerminal->Text , "PrinterCom", "");
+	delete ini;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::CheckBoxCfgUpdateClick(TObject *Sender)
+{
+	if (ComboBoxCfgTerminal->Text =="") return;
+	//设置各串口可配置修改
+	if (CheckBoxCfgUpdate->Checked) {
+		ComboBoxComKey->Enabled =true;
+		ComboBoxComTerminal->Enabled =true;
+		ComboBoxComPrinter->Enabled =true;
+		SpeedButtonSaveCfg->Enabled =true;
+		//刷新COM端口列表
+		GetComPortList(ComboBoxComKey->Items);
+		GetComPortList(ComboBoxComTerminal->Items);
+		GetComPortList(ComboBoxComPrinter->Items);
+	}else{
+		ComboBoxComKey->Enabled =false;
+		ComboBoxComTerminal->Enabled =false;
+		ComboBoxComPrinter->Enabled =false;
+		SpeedButtonSaveCfg->Enabled =false;
+	}
+}
+
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::GetComPortList(TStrings *lstComm)
+{
+	//刷新并获取当前可用串口列表
+	lstComm->Clear();
+	TRegistry *reg = new TRegistry;
+	TStringList *lst = new TStringList;
+	try{
+		reg->RootKey = HKEY_LOCAL_MACHINE;
+		reg->OpenKey("HARDWARE\\DEVICEMAP\\SERIALCOMM", true);
+		reg->GetValueNames(lst);
+		for (int i = 0; i < lst->Count; i++)
+			lstComm->Add(reg->ReadString(lst->Strings[i]));
+	}__finally{
+		delete reg;
+		delete lst;
+	}
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::SpeedButtonSaveCfgClick(TObject *Sender)
+{
+	//保存配置，并修改对象的端口设置
+	if (!CheckBoxCfgUpdate->Checked) return;
+	TIniFile *ini = new TIniFile(GetCurrentDir() + "\\app.ini");
+	if (ComboBoxComKey->Text !="") ini->WriteString(ComboBoxCfgTerminal->Text, "KeyboardCom", ComboBoxComKey->Text);
+	if (ComboBoxComTerminal->Text !="") ini->WriteString(ComboBoxCfgTerminal->Text, "TerminalCom", ComboBoxComTerminal->Text);
+	if (ComboBoxComPrinter->Text !="") ini->WriteString(ComboBoxCfgTerminal->Text, "PrinterCom", ComboBoxComPrinter->Text);
+	delete ini;
+	ShowMessage("端口设置参数已经保存，请转到监控页面初始化本终端机，或退出后重新打开程序！");
+	CheckBoxCfgUpdate->Checked =false;
+	CheckBoxCfgUpdate->OnClick(CheckBoxCfgUpdate);
+}
+//---------------------------------------------------------------------------
+bool TMainForm::SaveStubPngImage(CTerminal *terminal){
+	if (terminal->panel->ImageStub->Picture ==NULL) {
+		return false;
+	}
+	//使用当前容器句柄和调色板转换成jpg
+	TBitmap *bmp =terminal->panel->ImageStub->Picture->Bitmap;
+	Gdiplus::Bitmap *bmpGdi =new Gdiplus::Bitmap(bmp->Handle, bmp->Palette);
+	_GUID guid;
+	EncoderParameters encoderParameters;
+	ULONG quality =100;
+	encoderParameters.Count = 1;
+	encoderParameters.Parameter[0].Value = &quality;
+	encoderParameters.Parameter[0].Guid = EncoderQuality;
+	encoderParameters.Parameter[0].Type = EncoderParameterValueTypeLong;
+	encoderParameters.Parameter[0].NumberOfValues = 1;
+	if (GetEncoderClsid(L"image/png", &guid)){		//保存成png格式，压缩比例最高！
+		WideString fileName =terminal->xmlConfig->TerminalID;
+		if (bmpGdi->Save(fileName.c_bstr(), &guid, &encoderParameters) ==Gdiplus::Ok){
+			delete bmpGdi; bmpGdi =NULL;
+			return true;
+		}
+	}
+	delete bmpGdi;
+	return false;
+}
+// ---------------------------------------------------------------------------
+int TMainForm::GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
+	UINT num = 0; // number of image encoders
+	UINT size = 0; // size of the image encoder array in bytes
+	Gdiplus::ImageCodecInfo* pImageCodecInfo = NULL;
+	Gdiplus::GetImageEncodersSize(&num, &size);
+	if (size ==0) return -1; // Failure
+	pImageCodecInfo = (Gdiplus::ImageCodecInfo*)(malloc(size));
+	if (pImageCodecInfo == NULL) return -1; // Failure
+	Gdiplus::GetImageEncoders(num, size, pImageCodecInfo);
+	for (UINT j = 0; j < num; ++j) {
+		if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0) {
+			*pClsid = pImageCodecInfo[j].Clsid;
+			free(pImageCodecInfo);
+			return j; // Success
+		}
+	}
+	free(pImageCodecInfo);
+	return -1; // Failure
+}
+
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::ComboBoxTxtTerminalChange(TObject *Sender)
+{
+	//根据终端更新玩法列表菜单，不能根据下标定位，因为菜单位置序列是根据Init成功时加入的
+	ComboBoxTxtGame->Clear();
+	AnsiString terminalId =ComboBoxTxtTerminal->Text;
+	int idx =controller->terminalGroup->IndexOf(terminalId);
+	CTerminal *terminal =(CTerminal *)controller->terminalGroup->Objects[idx];
+	if (terminal->xmlConfig->TerminalID ==terminalId ) {
+		for (int k= 0; k <terminal->xmlConfig->Game->Count; k++) {
+			ComboBoxTxtGame->Items->Add(terminal->xmlConfig->Game->Get_Item(k)->GameName);
+		}
+	}
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::ComboBoxTxtGameChange(TObject *Sender)
+{
+	//根据终端机和玩法更新类型列表
+	ComboBoxTxtKind->Clear();
+	AnsiString terminalId =ComboBoxTxtTerminal->Text;
+	AnsiString gameName =ComboBoxTxtGame->Text;
+	int idx =controller->terminalGameGroup->IndexOf(terminalId +":" +gameName);
+	_di_IXMLGameType game =(IXMLGameType *)controller->terminalGameGroup->Objects[idx];
+	for (int m =0; m <game->Count; m++) {
+		if (game->Get_Stake(m)->Get_StakeNode().Pos("*") <=0){
+			ComboBoxTxtKind->Items->Add(game->Get_Stake(m)->Get_StakeName());
+		}
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::ButtonTxtClearClick(TObject *Sender)
+{
+	//清空加载的彩票号码文本框
+	for (int i =0; i <StringGridTxt->RowCount; i++) {
+		StringGridTxt->Cells[1][i+1] ="";
+		StringGridTxt->Cells[2][i+1] ="";
+	}
+	ComboBoxTxtTerminal->Enabled =true;
+	ComboBoxTxtGame->Enabled =true;
+	ComboBoxTxtKind->Enabled =true;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::SpeedButtonTxtPrintClick(TObject *Sender)
+{
+	//从文本框导出到终端出票
+	if (ComboBoxTxtKind->Text =="" || StringGridTxt->Cells[1][1] =="") return;
+	int idx =MainForm->controller->terminalGroup->IndexOf(ComboBoxTxtTerminal->Text);
+	CTerminal *terminal =(CTerminal *)MainForm->controller->terminalGroup->Objects[idx];
+	if (terminal->panel->GridPending->Cells[1][1] !="" || terminal->typeRobot->CanType){
+		ShowMessage("选择的终端还有未处理完的票，不能接受文本数据导入，先处理完终端排队的票再重试。");
+		return;
+	}
+	terminal->panel->DisableControls();
+	AnsiString gameId =terminal->xmlConfig->Game->Get_Item(ComboBoxTxtGame->ItemIndex)->GameID;
+	AnsiString gameKind =terminal->xmlConfig->Game->Get_Item(ComboBoxTxtGame->ItemIndex)->Get_Stake(ComboBoxTxtKind->ItemIndex)->PlayBetId;
+	AnsiString echoName =controller->playBetMap->Values[gameId +":" +gameKind];
+	terminal->panel->GridPending->RowCount =StringGridTxt->RowCount +1;	//放大行数，否则装不下
+	for (int k =0; k <StringGridTxt->RowCount; k++) {
+		if (StringGridTxt->Cells[1][k +1] =="") break;
+		terminal->panel->GridPending->InsertBlankRow(1);
+		terminal->panel->GridPending->Cells[1][1] =IntToStr(k +1);
+		terminal->panel->GridPending->Cells[2][1] =StringGridTxt->Cells[1][k +1];
+		terminal->panel->GridPending->Cells[3][1] =StringGridTxt->Cells[2][k +1];		//倍数可以再细化的，TAB键隔开
+		terminal->panel->GridPending->Cells[4][1] =echoName;    //计算出来的彩种显示列
+		terminal->panel->GridPending->Cells[5][1] =gameId +"-" +gameKind;
+		terminal->panel->GridPending->Cells[6][1] =14;
+		terminal->panel->GridPending->Cells[7][1] ="0";		//线下的单子
+	}
+	ButtonTxtClearClick(ButtonTxtClear);
+	FrameMonitor->currentTerminal =terminal;	//转到终端页
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::ComboBoxSkinNameChange(TObject *Sender)
+{
+	if (ComboBoxSkinName->ItemIndex >=0) {
+		TStyleManager *skinStyles =new TStyleManager();
+		skinStyles->SetStyle(ComboBoxSkinName->Text);
+		delete skinStyles;
+	}
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::SpeedButtonServerClick(TObject *Sender){
+	ShowMessage("投注站本地接单服务尚未实现，给投注站预留待开发的功能。");
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::IdHTTPServerCommandGet(TIdContext *AContext, TIdHTTPRequestInfo *ARequestInfo,
+		  TIdHTTPResponseInfo *AResponseInfo)
+{
+	//http://127.0.0.1:1898/time=20112012&result=1 		测试一下局域网投注的服务器返回，可以直接用个线程处理，直接加入数据库或合适的终端到窗口排队
+	AnsiString str =ARequestInfo->Document;
+	LabelTerminalMsg->Caption =str;
+	AResponseInfo->ContentText ="<html><title>OK</title><body>TEST</body></html>";
+	//if(IdHTTPServer->SessionState==true)
+	//IdHTTPServer->CreateSession(AThread,AResponseInfo,ARequestInfo);		//多线程并发响应的支持
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::QuitClick(TObject *Sender)
+{
+	if (controller->ModeOnline) {
+		controller->transComm->Logout();
+	}
+	//真正的退出程序了
+	Application->Terminate();
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::ButtonTestDataClick(TObject *Sender)
+{
+	for (int i = 1; i < 100; i++) {
+		/*if (i %2) {
+			StringGridTxt->Cells[1][i] ="01,02,03,04,05:06,07;11,12,13,14,15:06,03";
+			//StringGridTxt->Cells[1][i] ="01,02,03,04,05:06,07";
+			StringGridTxt->Cells[2][i] ="2";
+		}else{
+			StringGridTxt->Cells[1][i] ="05,06,07,08,09:01,10";
+			StringGridTxt->Cells[2][i] ="1";
+		} */
+		StringGridTxt->Cells[1][i] ="01,02,03,04,05,21,19:06,07";
+		StringGridTxt->Cells[2][i] ="1";
+	}
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::LinkLabelLinkClick(TObject *Sender, const UnicodeString Link,
+		  TSysLinkType LinkType)
+{
+	//导航到公司主页
+	ShellExecute (0, NULL, "www.LottChina.com", NULL, NULL, SW_SHOWNORMAL);
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainForm::FormDestroy(TObject *Sender)
+{
+	//关闭GDI+
+	GdiplusShutdown(m_gdiplusToken);
+}
+//---------------------------------------------------------------------------
+
+
+

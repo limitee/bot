@@ -1,0 +1,95 @@
+//---------------------------------------------------------------------------
+#include <System.hpp>
+#pragma hdrstop
+
+#include "TerminalDaemon.h"
+#include "Terminal.h"
+#include "TerminalBox.h"
+#include "TerminalConnection.h"
+#include "TerminalPanel.h"
+#include "TerminalCategory.h"
+#include "TicketCenterNodeApp.h"
+#include "Controller.h"
+#include "MediaSupport.h"
+#include "DefineStruct.h"
+
+#pragma package(smart_init)
+
+//---------------------------------------------------------------------------
+__fastcall CTerminalDaemon::CTerminalDaemon(CTerminal *term, bool CreateSuspended): TThread(CreateSuspended)
+{
+	terminal =term;
+	timeoutResetTimestamp =-1;
+	suspendTimestamp =-1;
+	intervalReconnectSecond =0;
+    stubFromFileReady =false;
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalDaemon::Execute(){
+	while (! Terminated){
+		//对各个终端监控汇总数据的更新
+		Synchronize(& terminal->monitor->RefreshInfo);
+		//尝试复位的超时事件后5秒钟以后，再清理现场，避免返回按键可能会误将票打出来，加强容错能力
+		if ((timeoutResetTimestamp!=-1) && ((GetTickCount() -timeoutResetTimestamp) >=5000)){
+			timeoutResetTimestamp =-1;          //重置超时失效
+			controller->AddErrorMessage("终端" +terminal->xmlConfig->TerminalID +"订单处理20秒超时后的5秒已复位，请注意观察界面是否正常。");
+			//	needReset =true;          		//需要复位，否则线程就一直挂在这就真的死了
+			//	NotifyStub(0, "");              //通知清理现场
+//			terminal->NotifyNoStub();
+			terminal->lastStake =NULL;
+			Synchronize(& terminal->connection->DisConnect);		//超时了也重置了，这样确保没有出票，就断开连接，重新登录后，后台也会重置终端机状态
+			controller->mediaSupport->SoundErrorLocal();
+		}
+		//工作线程挂起的超时监控处理
+		if (suspendTimestamp!=-1){
+			if (terminal->status >WorkStatus::IDLE){                 //工作忙状态，等待数据触发，超时复位
+				//重复票从文件装载票根，靠装载文件时的信号触发
+				if (stubFromFileReady){
+					stubFromFileReady =false;       //重置信号
+					suspendTimestamp =-1;
+					Sleep(500);                     //等待那边线程挂起，防止下边的Notify失效
+					char stubTxt[16384] ={0};
+					int money =terminal->ParserVerifyStub(terminal->box->stubDataLength, terminal->box->stubBuffer, stubTxt);
+					controller->AddErrorMessage("终端" +terminal->xmlConfig->TerminalID +"处理从文件装载票根，请注意上传是否正常。");
+					terminal->NotifyStub(money, AnsiString(stubTxt));
+                    //
+					memset(terminal->box->stubBuffer, 0, sizeof(terminal->box->stubBuffer));         //清理缓冲区
+					terminal->box->stubDataLength = 0;
+				}
+				//查看是否有长时间挂起的，停下来复位，20秒超时的异常处理
+				if (((GetTickCount() -suspendTimestamp) >=20000) && (timeoutResetTimestamp ==-1)){
+					suspendTimestamp =-1;               //挂起超时失效，避免本段代码定时器重进
+					controller->AddErrorMessage("终端" +terminal->xmlConfig->TerminalID +"订单20秒处理超时，请注意后续切换界面是否正常。");
+					AnsiString backRootKey =terminal->xmlConfig->Keyboard->DefaultBackRoot;
+					int keysCount =terminal->box->TypeInnerString(backRootKey);  //在这尝试按键跳出错误界面，但也很有可能误操作出票，所以下一行加入超时时间戳
+					long delay =keysCount *8 *(terminal->panel->TrackBarKey->Min +terminal->panel->TrackBarKey->Max -terminal->panel->TrackBarKey->Position);
+					timeoutResetTimestamp =GetTickCount() +delay;
+				}
+			}
+			//60秒登录超时，可手工点击登录
+			if (terminal->status ==WorkStatus::LOGON && ((GetTickCount() -suspendTimestamp) >=60000)) {
+				suspendTimestamp =-1;
+				controller->AddErrorMessage("终端" +terminal->xmlConfig->TerminalID +"自动登录1分钟超时，请手工操作登录，并将界面复位到主目录菜单。");
+				Synchronize(&terminal->panel->UpdateBtnPrintLoginStatus);
+			}
+		}
+		//硬件正常，且空闲时，能够自动接单，却断开了，则25秒钟间隔后自动重连
+		if (terminal->status ==WorkStatus::IDLE && terminal->panel->CheckBoxAutoRun->Checked && terminal->box->connected && !terminal->connection->isConnected){
+			intervalReconnectSecond ++;
+			if (intervalReconnectSecond >=52) {     //26秒钟，定时器是0.5秒
+				intervalReconnectSecond =0;
+				int keysCount =terminal->box->TypeInnerString(terminal->xmlConfig->Keyboard->DefaultBackRoot);			//自动退回到玩法选择主目录位置，可以多按两次来防止有屏保
+				long delay =keysCount *8 *(terminal->panel->TrackBarKey->Min +terminal->panel->TrackBarKey->Max -terminal->panel->TrackBarKey->Position);
+				Sleep(delay);
+				Synchronize(& terminal->panel->ResetPanelRequestEcho);  //提升到主线程去，防止多线程争抢资源冲突
+				terminal->ResetTerminalContext();
+				terminal->lastStake =NULL;      						//从主目录位置开始，清掉上次的节点
+				Synchronize(&terminal->panel->UpdateBtnPrintConnectionStatus);
+				Synchronize(& terminal->connection->Connect);           //重连
+			}
+		}
+		Sleep(500);
+	}
+}
+

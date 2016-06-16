@@ -1,0 +1,148 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "TerminalSocket.h"
+#include "Terminal.h"
+#include "LotteryDefine.h"
+#include "TerminalConfig.h"
+#include "Controller.h"
+#include "TicketCenterNodeApp.h"
+#include "lib\md5\MD5.h"
+#include "lib\jsoncpp\json.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+
+__fastcall CTerminalSocket::CTerminalSocket(CTerminal *term, bool CreateSuspended): TThread(CreateSuspended)
+{
+	terminal =term;
+	CanConnect =false;
+	//
+	ClientSocket =new TClientSocket(Application);
+	ClientSocket->Host =MainForm->controller->terminalConfig->ServerHost;
+	ClientSocket->Port =MainForm->controller->terminalConfig->ServerPort;
+	ClientSocket->ClientType =ctBlocking;
+}
+//---------------------------------------------------------------------------
+void __fastcall CTerminalSocket::Execute()
+{
+	while (! Terminated){
+		if (!CanConnect){			//终端机状态设置为暂停，就等待
+			Sleep(200);
+			continue;
+		}
+		//通信线程正常工作的处理
+		try{
+            //连接
+            ClientSocket->Active =true;
+			//登录
+			Login();
+			//读取消息
+            AnsiString head, body;
+			ReceiveMessage(head, body);
+
+			//判断登录
+			if (body.Pos("登陆成功") >0) {
+				//循环读取推送的消息
+				while(ClientSocket->Active){
+					AnsiString head, body;
+					if (ReceiveMessage(head, body)){
+						//HandleMessage(head, body);
+					}
+					Sleep(50);
+				}
+			}
+		}catch(...){
+			ClientSocket->Active =false;
+		}
+		Sleep(50);
+	}
+	ClientSocket->Close();
+	delete ClientSocket;
+}
+
+//*************************************************************************************************************
+void CTerminalSocket::Connect(){
+	CanConnect =true;
+}
+
+void CTerminalSocket::DisConnect(){
+    CanConnect =false;
+	ClientSocket->Active =false;
+}
+
+//*************************************************************************************************************
+
+bool CTerminalSocket::Login(){
+	AnsiString cmd ="T01";
+	Json::Value body;
+	body["msg"] ="我要登陆";
+	return SendMessage(cmd, AnsiString(body.toStyledString().c_str()));
+}
+
+
+//*************************************************************************************************************
+
+bool CTerminalSocket::SendMessage(AnsiString cmd, AnsiString jsonBody){
+	//Json测试    打包消息头
+	Json::Value head;
+	head["cmd"] =cmd.c_str();
+	head["digestType"] = "md5";
+	AnsiString timestamp =FormatDateTime("yyyy-mm-dd", Now()) +" "+FormatDateTime("hh:nn:ss.zzz000 +08:00", Now());
+	head["timestamp"] =timestamp.c_str();
+	head["userId"] = terminal->xmlConfig->TerminalID.c_str();
+	head["usertype"] = "terminal";
+	AnsiString terminalKey =MD5_CodeString(MainForm->controller->terminalConfig->ConnectionKey);
+	AnsiString md5degist =MD5_CodeString(AnsiStringToUtf8(terminalKey +jsonBody +timestamp));
+	head["digest"] =md5degist.c_str();
+	AnsiString headJson =AnsiString(head.toStyledString().c_str());
+
+	AnsiString utf8Body =AnsiStringToUtf8(jsonBody);
+
+	DWORD totalLen =htonl(4 +head.Length() +utf8Body.Length());
+	DWORD headLen =htonl(head.Length());
+	ClientSocket->Socket->SendBuf(&totalLen,4);
+	ClientSocket->Socket->SendBuf(&headLen,4);
+	ClientSocket->Socket->SendBuf(head.c_str(), head.Length());
+	ClientSocket->Socket->SendBuf(utf8Body.c_str(), utf8Body.Length());
+
+	return true;
+}
+
+bool CTerminalSocket::ReceiveMessage(AnsiString& head, AnsiString& body){
+	//接收回传的数据头，长度
+	int nRead =0, idx =0, nTimes =0;
+	BYTE bys[sizeof(DWORD)];    memset(bys, 0, sizeof(bys));
+	while (idx <4){
+		nRead =ClientSocket->Socket->ReceiveBuf(bys +idx, 4-idx);
+		idx +=nRead; nTimes ++;
+		if (nTimes >=500) break;
+		Sleep(20);
+	}
+	DWORD *packLenBytes  = (DWORD*) bys;
+	int packLen =ntohl(*packLenBytes);
+	//接收数据
+	if (packLen >0){
+		nRead =0; idx =0; nTimes =0;
+		char *packData  =new char[packLen];
+		memset(packData, 0, packLen);
+		while (idx <packLen){
+			nRead =ClientSocket->Socket->ReceiveBuf(packData +idx, packLen-idx);
+			idx +=nRead; nTimes ++;
+			if (nTimes >=500) break;
+			Sleep(20);
+		}
+		//解析报文数据
+		for(int i=0;i<4;i++) bys[i] =packData[i];
+        DWORD *headLenBytes  = (DWORD*) bys;
+		int headLen =ntohl(*headLenBytes);
+		head =AnsiString(packData +4, headLen);
+		AnsiString utf8Body =AnsiString(packData +4 +headLen, packLen -4 -headLen);
+		body =Utf8ToAnsi(utf8Body);
+		delete packData;
+
+		return true;
+	}
+    return false;
+}
+

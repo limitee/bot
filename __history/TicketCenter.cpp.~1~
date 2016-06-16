@@ -1,0 +1,69 @@
+//---------------------------------------------------------------------------
+#include <vcl.h>
+#pragma hdrstop
+#include <tchar.h>
+//---------------------------------------------------------------------------
+#include <Vcl.Styles.hpp>
+#include <Vcl.Themes.hpp>
+#include <Comobj.hpp>				//使用了OLE的一些东西，做系统外的设置很方便
+
+USEFORM("FrameMonitorGroup.cpp", FrameMonitor); /* TFrame: File Type */
+USEFORM("LotteryMerchantApp.cpp", MainForm);
+//---------------------------------------------------------------------------
+WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
+{
+	try
+	{
+		Application->Initialize();
+		Application->Title = "MCP8彩站全能助手";
+		Application->MainFormOnTaskBar = true;
+		HANDLE hMutex =CreateMutex(NULL, true, "mcp8");		//相同进程的互斥
+		if (GetLastError() ==ERROR_ALREADY_EXISTS){
+			CloseHandle(hMutex);
+			MessageBox(Application->Handle, "彩站助手程序已经在运行中，不能重复启动多个进程！", "错误提示", MB_OK +MB_ICONWARNING);
+			Application->Terminate();
+			return 0;
+		}
+		ReleaseMutex(hMutex);
+		/*
+		//通过防火墙，不会有系统拦截提示，主要用于HTTPServer启动时，OLE直接操作Windows系统策略很使用
+		Variant fwMgr, Profile, ovPort, fwApp;
+		fwMgr =CreateOleObject("HNetCfg.FwMgr");
+		Profile =fwMgr.OlePropertyGet("LocalPolicy").OlePropertyGet("CurrentProfile");
+		//在例外中添加应用，字符串参数类型必须都是Unicode啊，否则出错！
+		fwApp =CreateOleObject("HNetCfg.FwAuthorizedApplication");
+		fwApp.OlePropertySet("Name", L"MCP8彩站全能助手"); //显示名字
+		fwApp.OlePropertySet("ProcessImageFileName", WideString(Application->ExeName)); //要通过的程序
+		fwApp.OlePropertySet("Enabled", true);
+		Profile.OlePropertyGet("AuthorizedApplications").OleFunction("Add", fwApp);
+		//添加网络端口
+		ovPort =CreateOleObject("HNetCfg.FwOpenPort");
+		ovPort.OlePropertySet("Port", 1898);
+		ovPort.OlePropertySet("Name", WideString(Application->ExeName));
+		ovPort.OlePropertySet("Scope", 0);			//NET_FW_SCOPE_ALL
+		ovPort.OlePropertySet("IpVersion", 2);   	//NET_FW_IP_VERSION_ANY
+		ovPort.OlePropertySet("Protocol", 6);      	//NET_FW_IP_PROTOCOL_TCP
+		ovPort.OlePropertySet("Enabled", true);
+		Profile.OlePropertyGet("GloballyOpenPorts").OleFunction("Add", ovPort);
+		*/
+		//启动程序主界面
+		Application->CreateForm(__classid(TMainForm), &MainForm);
+		Application->Run();
+	}
+	catch (Exception &exception)
+	{
+		Application->ShowException(&exception);
+	}catch (...)
+	{
+		try
+		{
+			throw Exception("");
+		}
+		catch (Exception &exception)
+		{
+			Application->ShowException(&exception);
+		}
+	}
+	return 0;
+}
+//---------------------------------------------------------------------------

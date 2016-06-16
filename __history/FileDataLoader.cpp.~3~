@@ -1,0 +1,15 @@
+//---------------------------------------------------------------------------
+
+#pragma hdrstop
+
+#include "FileDataLoader.h"
+#include "Controller.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+//---------------------------------------------------------------------------
+__fastcall CFileDataLoader::CFileDataLoader(CTerminal *term, bool CreateSuspended): TThread(CreateSuspended)
+{
+	terminal =term;
+	SuspendTimestamp =-1;
+}

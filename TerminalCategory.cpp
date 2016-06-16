@@ -1,0 +1,151 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "Terminal.h"
+#include "TerminalCategory.h"
+#include "TerminalPanel.h"
+#include "TerminalConfig.h"
+#include "TerminalRobotTyper.h"
+
+#include "Controller.h"
+#include "MediaSupport.h"
+#include "TicketCenterNodeApp.h"
+#include "FrameMonitorGroup.h"
+//---------------------------------------------------------------------------
+
+#pragma package(smart_init)
+
+__fastcall CTerminalCategory::CTerminalCategory(TCategoryPanelGroup *Owner, CTerminal *term): TCategoryPanel(Owner){
+	PanelGroup =Owner;
+	ticketCount =0;
+	ticketMoney =0;
+	prizeCount =0;
+	prizeMoney =0;
+	//
+	terminal =term;
+	Height =95;
+	ParentFont =false;
+	Color =clGray;
+	//
+	ShapeStatus =new TShape(this);   	//状态指示灯
+	ShapeStatus->Left =149;
+	ShapeStatus->Top =15;
+	ShapeStatus->Width =32;
+	ShapeStatus->Height =32;
+	ShapeStatus->Hint ="终端机和BOX的工作状态指示";
+	ShapeStatus->Pen->Color =clWhite;
+	ShapeStatus->Brush->Color =clYellow;
+	ShapeStatus->Shape =stCircle;
+	ShapeStatus->ShowHint =true;
+	ShapeStatus->Parent =this;
+
+	EchoDescribe =new TEdit(this);		//各个标签
+	EchoDescribe->Left =16;
+	EchoDescribe->Top =11;
+	EchoDescribe->Width =128;
+	EchoDescribe->Height =21;
+	EchoDescribe->Text ="";
+	EchoDescribe->BorderStyle =bsNone;
+	EchoDescribe->Color =this->Color;
+	EchoDescribe->Enabled =false;
+	EchoDescribe->ReadOnly =true;
+	EchoDescribe->Parent =this;
+	//
+	EchoSum =new TEdit(this);
+	EchoSum->Left =16;
+	EchoSum->Top =35;
+	EchoSum->Width =128;
+	EchoSum->Height =21;
+	EchoSum->Text ="";
+	EchoSum->BorderStyle =bsNone;
+	EchoSum->Color =this->Color;
+	EchoSum->Enabled =false;
+	EchoSum->ReadOnly =true;
+	EchoSum->Parent =this;
+	//设置标签图标，在线离线
+	Caption =terminal->xmlConfig->TerminalID;
+    SetConnectionStatus(false);
+	//链接事件
+	this->OnClick =MonitorPanelClick;
+	onlineStatus =false;
+	onlineStatusChanged =false;
+    stubTextChanged =false;
+}
+
+//***********************************************************************************************
+void __fastcall CTerminalCategory::RefreshInfo(){
+	if (onlineStatusChanged){
+		this->Collapse();
+		if (onlineStatus){
+			ExpandedHotImageIndex =1;
+			ExpandedImageIndex =1;
+			ExpandedPressedImageIndex =1;
+		}else{
+			ExpandedHotImageIndex =0;
+			ExpandedImageIndex =0;
+			ExpandedPressedImageIndex =0;
+		}
+		this->Expand();
+        onlineStatusChanged =false;
+	}
+	if (stubTextChanged){
+        //显示票根，转换一下，避免单行超过1024字节，控件限制的错误
+		terminal->panel->PanelStub->Clear();
+		if (stubText !=NULL && stubText !="") {
+			TStringList *text =new TStringList();
+			text->Text =stubText.Trim();
+			terminal->panel->PanelStub->Lines->AddStrings(text);
+			terminal->panel->PanelStub->Perform(WM_VSCROLL, SB_TOP, 0); 			//光标归位，免得滚下去难看
+			delete text;    text =NULL;
+		}
+		stubTextChanged =false;
+	}
+	//刷新显示信息
+	EchoDescribe->Text ="出票 " +IntToStr(ticketCount) +" 张 " +IntToStr(ticketMoney/100) +" 元";
+	EchoSum->Text ="兑奖 " +IntToStr(prizeCount) +" 张 " +FloatToStr(prizeMoney/100) +" 元";
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalCategory::MonitorPanelClick(TObject *Sender){
+	SetTerminalActive();
+}
+
+//*********************************************************************************
+void CTerminalCategory::SetConnectionStatus(bool online){
+	if (onlineStatus !=online) onlineStatusChanged =true;
+	onlineStatus =online;
+}
+
+void CTerminalCategory::SetStubEchoText(AnsiString stub){
+	stubText =stub;
+	stubTextChanged =true;
+}
+
+//*********************************************************************************
+void __fastcall CTerminalCategory::SetTerminalActive(){
+	//自动激活并启动各个终端监控对象
+	if (terminal->status <IDLE) {
+		if (!terminal->Init()){
+			controller->mediaSupport->SoundErrorLocal();          //初始化错误的话声音提示报警
+		}
+	}
+	if (FrameMonitor->currentTerminal !=NULL) {		//先取消掉原来的窗口恢复颜色
+		FrameMonitor->currentTerminal->monitor->Caption =FrameMonitor->currentTerminal->xmlConfig->TerminalID;
+		FrameMonitor->currentTerminal->monitor->Color =clBtnFace;
+		FrameMonitor->currentTerminal->monitor->EchoDescribe->Color =clBtnFace;
+		FrameMonitor->currentTerminal->monitor->EchoSum->Color =clBtnFace;
+		FrameMonitor->PanelCurrentTerminal->Visible =false;
+	}
+	//选中当前的终端，变换右侧窗口
+	Update();
+	Color =clSkyBlue;
+	EchoDescribe->Color =this->Color;
+	EchoSum->Color =this->Color;
+	Caption ="【" +terminal->xmlConfig->TerminalID +"】";
+	FrameMonitor->currentTerminal =terminal;
+	FrameMonitor->PanelCurrentTerminal =terminal->panel;
+	FrameMonitor->PanelCurrentTerminal->Width =FrameMonitor->Width -200;
+	FrameMonitor->PanelCurrentTerminal->Height =FrameMonitor->Height;
+	FrameMonitor->PanelCurrentTerminal->Visible =true;
+}
+

@@ -1,0 +1,44 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalMonitorPanelH
+#define TerminalMonitorPanelH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+#include <Classes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.StdCtrls.hpp>
+#include <Vcl.Forms.hpp>
+#include <Vcl.ExtCtrls.hpp>
+#include <Vcl.ImgList.hpp>
+
+#include "LotteryMerchant.h"
+
+class CTerminal;
+
+class CTerminalMonitorPanel : TCategoryPanel
+{
+__published:	// IDE-managed Components
+	TShape *ShapeStatus;
+	TEdit *EchoDescribe;
+	TEdit *EchoSum;
+
+	void __fastcall MonitorPanelClick(TObject *Sender);
+
+private:	// User declarations
+	CTerminal *terminal;
+
+public:		// User declarations
+	__fastcall CTerminalMonitorPanel(TCategoryPanelGroup *Owner, CTerminal *term);
+
+	void RefreshInfo();
+	void SetActive();		//设置本终端成为当前的激活终端，主要是界面上的处理
+
+	int pendingCount;		//排队票数
+
+	int ticketCount;
+	int ticketMoney;
+
+	int prizeCount;
+	int prizeMoney;
+};
+
+#endif

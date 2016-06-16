@@ -1,0 +1,65 @@
+{*******************************************************************************
+
+  AutoUpgrader Professional
+  FILE: auAutoUpgraderWizard.pas - Application Update Wizard form
+
+  Copyright (c) 1999-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+*******************************************************************************}
+unit auAutoUpgraderWizard;
+
+interface
+
+uses
+  Messages, Classes, Controls, Forms, StdCtrls, ExtCtrls, ComCtrls, 
+  auAutoUpgrader, Graphics;
+
+type
+  TauAutoUpgraderWizardForm = class(TForm)
+    Panel1: TPanel;
+    Image1: TImage;
+    Bevel1: TBevel;
+    WizardTitle: TLabel;
+    LCurrentFile: TGroupBox;
+    LAllFiles: TGroupBox;
+    LDownloadingFileFrom: TLabel;
+    EstimatedTimeLeftLab: TLabel;
+    TransferRateLab: TLabel;
+    ProgressCurrentFile: TProgressBar;
+    ProgressAllFiles: TProgressBar;
+    FinishBtn: TButton;
+    CancelBtn: TButton;
+    AllDownloading: TLabel;
+    AboutShadow: TLabel;
+    AboutLabel: TLabel;
+    FileURL: TEdit;
+    AfterNote: TLabel;
+    FileSizeLab: TLabel;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);    
+    procedure FileURLKeyPress(Sender: TObject; var Key: Char);
+    procedure FinishBtnClick(Sender: TObject);
+    procedure CancelBtnClick(Sender: TObject);
+  protected
+  private
+    AutoUpgrader: TauAutoUpgrader;
+
+    procedure WMSysCommand(var Message: TWMSysCommand); message WM_SYSCOMMAND;    
+  public
+    procedure Finish;
+  end;
+
+var
+  WizardForm: TauAutoUpgraderWizardForm = nil;
+
+procedure ShowAutoUpgraderWizard(aAutoUpgrader: TauAutoUpgrader);
+
+implementation

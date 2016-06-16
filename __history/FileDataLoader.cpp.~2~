@@ -1,0 +1,14 @@
+//---------------------------------------------------------------------------
+
+#pragma hdrstop
+
+#include "FileDataLoader.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+//---------------------------------------------------------------------------
+__fastcall CTerminalBonusRobot::CTerminalBonusRobot(CTerminal *term, bool CreateSuspended): TThread(CreateSuspended)
+{
+	terminal =term;
+	SuspendTimestamp =-1;
+}

@@ -1,0 +1,528 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include <Vcl.Actnlist.hpp>
+#include <Vcl.ClipBrd.hpp>
+#include <inifiles.hpp>
+#include <Sysinit.hpp>
+
+#include "TicketCenterNodeApp.h"
+
+#include "Terminal.h"
+#include "TerminalRobotTyper.h"
+#include "TerminalCategory.h"
+#include "TerminalPanel.h"
+#include "TerminalConfig.h"
+#include "TerminalBox.h"
+#include "TerminalConnection.h"
+#include "TerminalDaemon.h"
+
+#include "Controller.h"
+#include "ConfigUnit.h"
+
+#pragma package(smart_init)
+//---------------------------------------------------------------------------
+__fastcall CTerminalPanel::CTerminalPanel(TFrame* Owner, CTerminal *term) : TPanel(Owner){
+	terminal =term;
+	this->Parent =Owner;
+	//面板大小等属性
+	this->Left =203;
+	this->Top =1;
+	this->Width =Owner->Width -5;
+	this->Height =Owner->Height -2;
+	this->BevelInner =bvLowered;
+	this->BevelOuter =bvNone;
+	//按照XML配置中的TerminalType对象即可定制化
+	this->OnResize =CTerminalPanelResize;
+	//彩票鼠标当前终端号的提示
+	ButtonConfig =new TButton(this);
+	ButtonConfig->Left =47;
+	ButtonConfig->Top =9;
+	ButtonConfig->Width =159;
+	ButtonConfig->Height =39;
+	ButtonConfig->Caption ="终端[" +terminal->xmlConfig->TerminalID +"]配置";
+	ButtonConfig->Font->Size =12;
+	ButtonConfig->Font->Style >>fsBold;
+	ButtonConfig->OnClick =ButtonConfigClick;
+	ButtonConfig->Parent =this;
+	//彩票明细提示
+	LabelTicket =new TLabel(this);
+	LabelTicket->Left =7;
+	LabelTicket->Top =59;
+	LabelTicket->Width =174;
+	LabelTicket->AutoSize =false;
+	LabelTicket->Caption ="当前正在处理的订单详情：";
+	LabelTicket->Parent =this;
+	//当前彩票显示窗口
+	RichEditTicket =new TRichEdit(this);
+	RichEditTicket->Left =4;
+	RichEditTicket->Top =LabelTicket->Top +20;
+	RichEditTicket->Width =245;
+	RichEditTicket->Height =207;
+	RichEditTicket->Alignment =taCenter;
+	RichEditTicket->Enabled =false;
+	RichEditTicket->Font->Name ="Tahoma";
+	RichEditTicket->Font->Height =-13;
+	RichEditTicket->WordWrap =false;
+	RichEditTicket->Parent =this;
+
+	//票根提示
+	LabelStub =new TLabel(this);
+	LabelStub->Left =7;
+	LabelStub->Top =RichEditTicket->Top +RichEditTicket->Height +13;
+	LabelStub->Width =199;
+	LabelStub->AutoSize =false;
+	LabelStub->Caption ="拦截打印机的票根数据：";
+	LabelStub->Parent =this;
+	//票根显示窗口
+	PanelStub =new TRichEdit(this);
+	PanelStub->Left =4;
+	PanelStub->Top =LabelStub->Top +21;
+	PanelStub->Width =245;
+	PanelStub->Height =471;
+	PanelStub->Alignment =taCenter;
+	PanelStub->ReadOnly =true;
+	PanelStub->ScrollBars =ssVertical;
+	PanelStub->Font->Name ="微软雅黑";
+	PanelStub->Font->Height =-10;
+	PanelStub->WordWrap =false;
+	PanelStub->OnDblClick =PanelStubDblClick;
+	PanelStub->Parent =this;
+
+	//彩票列表提示
+	LabelGrid =new TLabel(this);
+	LabelGrid->Left =253;
+	LabelGrid->Top =3;
+	LabelGrid->Width =397;
+	LabelGrid->AutoSize =false;
+	LabelGrid->Caption ="出票兑奖订单数据列表（鼠标右键可复制当前行的订单数据到粘贴板）：";
+	LabelGrid->Parent =this;
+	//彩票列表
+	TicketGrid =new CTicketGrid(this, terminal);
+	TicketGrid->Left =253;
+	TicketGrid->Top =21;
+	TicketGrid->Width =291;
+	TicketGrid->Height =447;
+	TicketGrid->OnContextPopup =(TContextPopupEvent) & TicketGridContextPopup;		//NND，这个有点拗啊，真难弄
+	TicketGrid->OnSelectCell =TicketGridSelectCell;
+	TicketGrid->Parent =this;
+
+	//时间间隔参数框
+	PanelInterval =new TPanel(this);
+	PanelInterval->Left =551;
+	PanelInterval->Top =20;
+	PanelInterval->Width =237;
+	PanelInterval->Height =41;
+	PanelInterval->BevelInner =bvLowered;
+	PanelInterval->Parent =this;
+	//按键参数
+	LabelIntervalKey =new TLabel(PanelInterval);
+	LabelIntervalKey->Left =7;
+	LabelIntervalKey->Top =9;
+	LabelIntervalKey->Width =230;
+	LabelIntervalKey->AutoSize =false;
+	LabelIntervalKey->Caption ="慢                                                                   快";
+	LabelIntervalKey->Parent =PanelInterval;
+	//按键间隔调整组件
+	TrackBarKey =new TTrackBar(PanelInterval);
+	TrackBarKey->Left =21;
+	TrackBarKey->Top =6;
+	TrackBarKey->Width =200;
+	TrackBarKey->Height =31;
+	TrackBarKey->Max =16;
+	TrackBarKey->Min =8;
+	TrackBarKey->Frequency =1;
+	TrackBarKey->Cursor =crHandPoint;
+	TrackBarKey->OnChange =TrackBarKeyChange;
+	TrackBarKey->Parent =PanelInterval;
+
+	//操作平台组框
+	PanelControl =new TPanel(this);
+	PanelControl->Left =551;
+	PanelControl->Top =65;
+	PanelControl->Width =237;
+	PanelControl->Height =125;
+	PanelControl->BevelInner =bvLowered;
+	PanelControl->Color =clWhite;
+	PanelControl->Parent =this;
+
+	//开关
+	CheckBoxAutoRun =new TCheckBox(PanelControl);
+	CheckBoxAutoRun->Left =33;
+	CheckBoxAutoRun->Top =7;
+	CheckBoxAutoRun->Width =89;
+	CheckBoxAutoRun->Height =17;
+	CheckBoxAutoRun->Caption ="自动接单";
+	if (terminal->xmlConfig->EnableAutoRun) {
+		CheckBoxAutoRun->Checked =true;
+		CheckBoxAutoRun->Enabled =true;
+	}else{
+		CheckBoxAutoRun->Checked =false;
+		CheckBoxAutoRun->Enabled =false;
+	}
+	CheckBoxAutoRun->Visible =true;
+	CheckBoxAutoRun->Parent =PanelControl;
+
+	//跳票提示音
+	CheckBoxSound =new TCheckBox(PanelControl);
+	CheckBoxSound->Left =137;
+	CheckBoxSound->Top =7;
+	CheckBoxSound->Width =89;
+	CheckBoxSound->Height =17;
+	CheckBoxSound->Caption ="跳票声音";
+	CheckBoxSound->Checked =false;
+	CheckBoxSound->Parent =PanelControl;
+
+	//操作主按钮
+	BitBtnPrint =new TBitBtn(PanelControl);
+	BitBtnPrint->Left =19;
+	BitBtnPrint->Top =31;
+	BitBtnPrint->Width =198;
+	BitBtnPrint->Height =81;
+	BitBtnPrint->Caption ="登录(&L)";
+	BitBtnPrint->Font->Size =18;
+	BitBtnPrint->Font->Name ="微软雅黑";
+	BitBtnPrint->Font->Style >> fsBold;
+	BitBtnPrint->Cursor =crHandPoint;
+	BitBtnPrint->Glyph->LoadFromResourceName((int)HInstance, "bmpprint");	//直接使用隐藏的资源就可以了，免得加载资源文件
+	BitBtnPrint->NumGlyphs =2;
+	BitBtnPrint->Enabled =false;        //默认不可用，BOX准备好才可以
+	BitBtnPrint->OnClick =BitBtnPrintClick;
+	BitBtnPrint->Parent =PanelControl;
+
+	//键盘框提示
+	LabelKeyBoard =new TLabel(this);
+	LabelKeyBoard->Left =551;
+	LabelKeyBoard->Top =PanelControl->Top +PanelControl->Height +7;
+	LabelKeyBoard->Width =174;
+	LabelKeyBoard->AutoSize =false;
+	LabelKeyBoard->Caption ="终端机键盘常用按键：";
+	LabelKeyBoard->Parent =this;
+	//键盘组
+	ButtonGroupKeyBoard =new TButtonGroup(this);
+	ButtonGroupKeyBoard->Left =553;
+	ButtonGroupKeyBoard->Top =LabelKeyBoard->Top +21;
+	ButtonGroupKeyBoard->Width =235;
+	ButtonGroupKeyBoard->Height =35;
+	ButtonGroupKeyBoard->BevelInner =bvRaised;
+	ButtonGroupKeyBoard->BevelOuter =bvLowered;
+	ButtonGroupKeyBoard->Cursor =crHandPoint;		//键盘组也是手型光标
+	ButtonGroupKeyBoard->Font->Style >> fsBold;
+	ButtonGroupKeyBoard->BorderWidth =3;
+	ButtonGroupKeyBoard->ButtonHeight =33;
+	ButtonGroupKeyBoard->ButtonWidth =45;
+	ButtonGroupKeyBoard->Parent =this;
+
+	//报表菜单提示
+	LabelReport =new TLabel(this);
+	LabelReport->Left =551;
+	LabelReport->Top =ButtonGroupKeyBoard->Top +ButtonGroupKeyBoard->Height +7;
+	LabelReport->Width =219;
+	LabelReport->AutoSize =false;
+	LabelReport->Caption ="终端机报表数据采集：";
+	LabelReport->Parent =this;
+
+	//菜单组
+	CategoryButtonsReport =new TCategoryButtons(this);
+	CategoryButtonsReport->Left =553;
+	CategoryButtonsReport->Top =LabelReport->Top +21;
+	CategoryButtonsReport->Width =235;
+	CategoryButtonsReport->Height =79;
+	CategoryButtonsReport->Cursor =crHandPoint;		//手型光标
+	CategoryButtonsReport->BorderWidth =12;
+	CategoryButtonsReport->ButtonHeight =51;
+	CategoryButtonsReport->Font->Size =10;
+	CategoryButtonsReport->OnSelectedCategoryChange =CategoryButtonsSelectedCategoryChange;
+	CategoryButtonsReport->Parent =this;
+    //
+	bonusMode =true;
+	SetTicketMode();            //默认出票模式
+	//
+	this->Visible =false;		//初始化后全部先不可见，激活时才可见
+    WarnedPressKey =false;
+}
+
+//****************************************************************************************
+void __fastcall CTerminalPanel::KeyActionExecute(TObject *Sender){
+	//打印本按键对应的ASCII码到BOX，如尚未初始化，则提示按键值
+	if (!terminal->box->connected){
+		AnsiString echo =((TAction*)Sender)->Caption;
+		if (echo !="Nop") ShowMessage("终端机尚未启动或状态异常不能下发，对应按键值为：" +echo);
+		else ShowMessage("终端机尚未启动或状态异常，现在按键间隔延时为 " +IntToStr((TrackBarKey->Min +TrackBarKey->Max -TrackBarKey->Position) *10) +" 毫秒。");
+		return;
+	}
+	if (terminal->status !=WorkStatus::IDLE && !WarnedPressKey){
+		WarnedPressKey =true;                   	//提醒一次就够了
+		if (MessageDlg("终端机正忙，按键可能干扰机器人自动工作，确认要下发吗？", mtConfirmation ,mbOKCancel ,0) !=1)
+		return;
+	}
+	terminal->box->TypeAsciiCode(((TAction*)Sender)->Caption);
+}
+
+//****************************************************************************************
+void __fastcall CTerminalPanel::CategoryButtonsSelectedCategoryChange(TObject *Sender, TButtonCategory * const Category){
+	CategoryButtonsReport->SelectedItem =NULL;  	//置为空，就可以重复点击菜单了
+	if (!terminal->box->connected || terminal->status <IDLE) {
+		ShowMessage("终端机尚未启动或状态异常，请暂停出票或兑奖。");
+		return;
+	}
+	if (terminal->status !=WorkStatus::IDLE){
+		ShowMessage("终端机忙，请暂停其他任务后闲时，才可以出报表。");
+		return;
+	}
+    terminal->connection->DisConnect();
+	CheckBoxAutoRun->Checked  =false;  //如果手动断开的话，取消自动重连设置
+	//报表、数据采集菜单
+	int index =0;
+	for (; index <terminal->xmlConfig->CategoryReport->Count; index++) {
+		if (terminal->xmlConfig->CategoryReport->Get_ReportMenu(index)->Caption == Category->Caption) break;
+	}
+	_di_IXMLReportMenuType menu =terminal->xmlConfig->CategoryReport->Get_ReportMenu(index);
+	int keysCount =terminal->box->TypeInnerString(menu->InnerKeys);
+	//在这设置票根的类型，直接在Terminal的NotifyStub中处理上传就好了，不用另开线程
+	if (menu->HaveStub){
+		terminal->status =WorkStatus::REPORT;
+		if (terminal->currentRequest !=NULL){
+			delete terminal->currentRequest;
+			terminal->currentRequest =NULL;
+		}
+		//等待BOX下发键盘的完成
+		long delay =keysCount *8 *(terminal->panel->TrackBarKey->Min +terminal->panel->TrackBarKey->Max -terminal->panel->TrackBarKey->Position);
+ 		terminal->daemon->suspendTimestamp =GetTickCount() +delay;	//设置时间戳，判断最大出票时间的超时参数
+	}
+}
+
+//****************************************************************************************
+void __fastcall CTerminalPanel::TrackBarKeyChange(TObject *Sender){     //调整按键时间间隔
+	terminal->box->SetKeyInterval(TrackBarKey->Min +TrackBarKey->Max -TrackBarKey->Position);
+}
+
+//****************************************************************************************
+void __fastcall CTerminalPanel::CTerminalPanelResize(TObject *Sender){
+	//动态调整左边坐标即可
+	int lineAdjust =this->Width -243;
+	PanelControl->Left =lineAdjust;
+	PanelInterval->Left =lineAdjust;
+	LabelKeyBoard->Left =lineAdjust +3;
+    LabelReport->Left =lineAdjust +3;
+	ButtonGroupKeyBoard->Left =lineAdjust +1;
+    CategoryButtonsReport->Left =lineAdjust +1;
+	//调整下边界高度
+    PanelStub->Height =this->Height -PanelStub->Top -2;
+	TicketGrid->Height =this->Height -23;
+	if (this->Height >CategoryButtonsReport->Top) CategoryButtonsReport->Height =this->Height -CategoryButtonsReport->Top -2;
+	int reportHeight =CategoryButtonsReport->Font->Size *2 *(terminal->xmlConfig->CategoryReport->Count +2) +terminal->xmlConfig->CategoryReport->Count;   //边宽
+	if (CategoryButtonsReport->Height >reportHeight) CategoryButtonsReport->Height =reportHeight;
+	//调整号码窗宽度
+	TicketGrid->Width =this->Width -499;
+	if (this->Width >=1258) {
+        TicketGrid->ColWidths[5] =143;
+		TicketGrid->ColWidths[2] =TicketGrid->Width -332;
+	}else{
+		TicketGrid->ColWidths[5] =93;
+		TicketGrid->ColWidths[2] =TicketGrid->Width -282;
+	}
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::BitBtnPrintClick(TObject *Sender){
+	if (terminal->box->connected){
+		if (terminal->status ==WorkStatus::IDLE){  //TODO 忙时的状态错误情况需要处理
+			if (terminal->connection->isConnected){
+				terminal->connection->DisConnect();
+				CheckBoxAutoRun->Checked  =false;  //如果手动断开的话，取消自动重连设置
+			}else{
+				terminal->box->TypeInnerString(terminal->xmlConfig->Keyboard->DefaultBackRoot);			//自动退回到玩法选择主目录位置，可以多按两次来防止有屏保
+				if (MessageDlg("请确认终端机 " +terminal->xmlConfig->TerminalID +" 在【玩法选择】的主目录吗？", mtConfirmation ,mbOKCancel ,0) ==1){
+                    ResetPanelRequestEcho();
+                    terminal->ResetTerminalContext();           //防止上次请求的结果，和连接后的第一个请求匹配
+					terminal->lastStake =NULL;      			//从主目录位置开始，清掉上次的节点
+					terminal->connection->Connect();
+				}
+			}
+		}else if (terminal->status ==WorkStatus::LOGON){
+			if (MessageDlg("请确认终端机 " +terminal->xmlConfig->TerminalID +" 需要机器人自动按键登录吗？", mtConfirmation ,mbOKCancel ,0) ==1){
+				terminal->Logon();
+			}else{
+                //直接免登录，模拟拦截到空票根，状态升级
+				terminal->NotifyStub(0, "");
+				MainForm->ButtonTxtClear->Enabled =true;
+				MainForm->SpeedButtonTxtLoad->Enabled =true;
+				MainForm->ButtonGroupStart->Caption ="彩票终端机列表";
+				MainForm->ButtonGroupStart->Enabled =false;
+			}
+        }
+	}
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::TicketGridContextPopup(TObject *Sender, TPoint &MousePos, bool &Handled){
+	//鼠标滑过某行时取得当前行号，右键复制当前行号内容到剪贴板中
+	this->TicketGrid->Cursor =crHourGlass;
+	int col, row;
+	TicketGrid->MouseToCell(MousePos.X, MousePos.Y, col, row);
+	if (row >=1 && TicketGrid->Cells[1][row]!=""){
+		WideString orderInfo ="";
+		if (bonusMode) {
+			orderInfo ="终端：\t" +terminal->xmlConfig->TerminalID +"\r\n"
+				+"票号：\t" +TicketGrid->Cells[1][row] +"\r\n"
+				+"序列号：\t" +TicketGrid->Cells[2][row] +"\r\n"
+				+"金额（分）：\t" +TicketGrid->Cells[3][row];
+		}else{
+			orderInfo ="终端：\t" +terminal->xmlConfig->TerminalID +"\r\n"
+				+"票号：\t" +TicketGrid->Cells[1][row] +"\r\n"
+				+"彩种：\t" +TicketGrid->Cells[5][row] +"\r\n"
+				+"号码：\t" +TicketGrid->Cells[2][row] +"\r\n"
+				+"倍数：\t" +TicketGrid->Cells[3][row];
+		}
+		TClipboard *clip =new TClipboard;
+		clip->SetTextBuf(orderInfo.c_bstr());
+		delete clip;
+	}
+	this->TicketGrid->Cursor =crHandPoint;
+	Handled =true;
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::TicketGridSelectCell(TObject *Sender, int ACol, int ARow, bool &CanSelect){
+//	if (terminal->robotTicket !=NULL && terminal->status !=WorkStatus::PRINT) return;	//还在打印或兑奖中就失效
+//	//显示一张票的内容到票根信息窗口，用处不大，暂不支持吧
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::ButtonConfigClick(TObject *Sender){
+    ConfigForm->SetTerminal(terminal);
+    ConfigForm->ShowModal();
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::FillTopLineContent(TStringList *content){
+	for (int i=0; i<content->Count; i++){
+		TicketGrid->Cells[][1]
+	}
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::EchoOrderString(int row){
+	RichEditTicket->Lines->Clear();
+	AnsiString stakeStr =TicketGrid->Cells[2][row];
+	if (stakeStr =="") return;
+	if (bonusMode){     //兑奖模式，显示兑奖序列号
+		RichEditTicket->Lines->Add("\r\n中奖票序列号：\r\n\r\n");
+		AnsiString seqCode =StringReplace(stakeStr, " ", "\r\n", TReplaceFlags() << rfReplaceAll);
+		RichEditTicket->Lines->Add(seqCode);
+	}else{      //出票模式
+		int stakeLen =stakeStr.Pos(";");
+		if (stakeLen <=0) stakeLen =stakeStr.Length();
+		AnsiString stakeList =StringReplace(stakeStr, ";", "\r\n", TReplaceFlags() << rfReplaceAll);
+		stakeList =StringReplace(stakeList, "|", "\r\n", TReplaceFlags() << rfReplaceAll);
+		RichEditTicket->Lines->Add(stakeList);
+		for (int lineCount =RichEditTicket->Lines->Count; lineCount <9; lineCount++) RichEditTicket->Lines->Add("");	//用空行补一下，美观
+		RichEditTicket->Lines->Add(TicketGrid->Cells[5][row] +TicketGrid->Cells[3][row] +"倍" +StrToInt(TicketGrid->Cells[7][row])/100 +"元");
+	}
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::PanelStubDblClick(TObject *Sender) {
+	//
+}
+
+//---------------------------------------------------------------------------
+void CTerminalPanel::SetTicketMode(){
+	if (bonusMode) {
+		TicketGrid->Cells[2][0]="投注号码串";
+		TicketGrid->Cells[3][0]="倍数";
+		TicketGrid->Cells[5][0]="彩种";			//仅显示用，计算出来的
+		bonusMode =false;
+		TicketGrid->ClearAll();
+		terminal->lastStake =NULL;  //模式改了就清空
+	}
+}
+
+//---------------------------------------------------------------------------
+void CTerminalPanel::SetPrizeMode(){
+	if (!bonusMode) {
+		TicketGrid->Cells[2][0]="中奖票序列码";
+		TicketGrid->Cells[3][0]="奖金";
+		TicketGrid->Cells[5][0]="";
+		bonusMode =true;
+		TicketGrid->ClearAll();
+		terminal->lastStake =NULL;  //模式改了就清空
+		CheckBoxAutoRun->Checked =false;    //兑奖模式时，不自动重连后台重试，否则很容易锁死UKEY，有问题等人工处理
+	}
+}
+
+//---------------------------------------------------------------------------
+void CTerminalPanel::SetQueryMode(){
+	terminal->lastStake =NULL;  	//模式改了就清空
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::SetLoginStatus(){
+	BitBtnPrint->Caption ="暂停(&S)";
+	BitBtnPrint->Enabled =true;
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::SetDisconnectStatus(){
+	BitBtnPrint->Caption ="接单(&R)";
+	BitBtnPrint->Enabled =true;
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::RequestChangePanelUI(){
+	BitBtnPrint->Enabled =false;		//暂时让终止按键失效
+	if (terminal->status ==WorkStatus::PRINT){
+		BitBtnPrint->Caption ="出票中……";
+		SetTicketMode();   //出票模式
+	}else if (terminal->status ==WorkStatus::AWARD){
+		BitBtnPrint->Caption ="兑奖中……";
+		SetPrizeMode();   //兑奖模式
+	}else if (terminal->status ==WorkStatus::REPORT){
+		BitBtnPrint->Caption ="查询中……";
+		SetQueryMode();   //查询模式
+	}
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::ChangeBoxConnected(){
+	terminal->monitor->ShapeStatus->Brush->Color =clYellow;	//黄灯亮
+	BitBtnPrint->Enabled =true;
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::ChangeBoxDisconnected(){
+	terminal->monitor->ShapeStatus->Brush->Color =clRed; 	//红色警报
+	BitBtnPrint->Enabled =false;           //禁用按钮操作
+	BitBtnPrint->Caption ="登录(&L)";
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::UpdateBtnPrintConnectionStatus(){
+	BitBtnPrint->Caption ="连接中……";
+	BitBtnPrint->Enabled =false;
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::UpdateBtnPrintLoginStatus(){
+	BitBtnPrint->Caption ="登录(&L)";
+	BitBtnPrint->Enabled =true;
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::GridInsertNewDataLine(){
+	//插入一新行，上一张往下挪一行
+	TicketGrid->InsertBlankRow(2);
+	for (int i = 1; i <= 7; i++) TicketGrid->Cells[i][2] =TicketGrid->Cells[i][1];
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalPanel::ResetPanelRequestEcho(){
+	//每次完成一个请求，或者超时后，处理界面显示内容的重置
+	if (terminal->connection->isConnected) BitBtnPrint->Caption ="暂停(&S)";
+	else BitBtnPrint->Caption ="接单(&R)";
+	BitBtnPrint->Enabled =true;			//按键有效
+	//
+	RichEditTicket->Lines->Clear();
+	for (int i = 1; i <= 7; i++) TicketGrid->Cells[i][1] ="";
+}

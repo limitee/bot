@@ -1,0 +1,278 @@
+// ---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "TransComm4Socket.h"
+
+#include <objbase.h>
+#include <stdio.h>
+#include <System.Win.ScktComp.hpp>
+#include "Controller.h"
+#include "MediaSupport.h"
+#include "LogSupport.h"
+#include "TicketCenterNodeApp.h"
+#include "TerminalConfig.h"
+#include "Terminal.h"
+#include "TerminalPanel.h"
+#include "TerminalTicketGrid.h"
+#include <mshtml.hpp>
+
+#pragma package(smart_init)
+
+// ---------------------------------------------------------------------------
+CTransComm::CTransComm(CController *p) {
+	controller =p;
+}
+
+CTransComm::~CTransComm() {}
+
+// ------------------------------------------------------------------------------
+AnsiString CTransComm::GetServerTimestamp() {
+	return "";		//直接返回本机时间算了，凑合着吧，尽量接口兼容
+}
+
+// ------------------------------------------------------------------------------
+int CTransComm::GetPendingTickets(int count) {
+	int retCount = 0;
+
+	AnsiString cmdCode = "P01";
+
+	AnsiString baodiStr ="false";
+	AnsiString batchModeStr ="false";
+	AnsiString stationId ="";		//controller->merchant->MerchantId;
+	AnsiString operatorId ="";		//controller->operatorId;
+	AnsiString reqText =stationId +";" +"" +";" +count +";" +baodiStr +";" +batchModeStr +";" +0 +";" +operatorId;
+
+	AnsiString ticketsText = TransComm(cmdCode, reqText);
+
+	char *packData  =ticketsText.c_str();
+	int len =0, idxCol =0, idxRow =0;
+	AnsiString str ="";
+	AnsiString items[8];
+	while(len <=ticketsText.Length()){
+		if (packData[len] =='\t'){
+			items[idxRow] =str;
+			str ="";
+			idxRow ++;
+		}else if (packData[len] =='\n'){
+			items[idxRow] =str;
+			if (items[0].Trim().Length()==14 && items[1].Trim().Length()<=2 && items[2].Trim() !=""){
+				//保存直接加入数据库中
+				Ticket *ticket =new Ticket;
+				ticket->ticketId = items[0].Trim();
+				ticket->stakeLen =StrToInt(items[1].Trim());
+				ticket->ticketNumbers =items[2].Trim();
+				ticket->multiple =StrToInt(items[3].Trim());
+				ticket->gameId =items[4].Trim().SubString(0, 4);
+				ticket->gameAdapterId =items[4].Trim().SubString(6, 1);
+//				controller->dbSupport->SaveTicket2DB(ticket);
+				delete ticket; ticket =NULL;
+            }
+			//
+			str ="";
+			idxCol ++;
+			idxRow =0;
+		}else{
+			str +=packData[len];
+		}
+		len ++;
+	}
+	//
+	controller->logSupport->WriteLogWithTime("从服务器取" +IntToStr(retCount) +"张票：" +ticketsText);
+
+	return retCount;
+}
+
+// ------------------------------------------------------------------------------
+int CTransComm::PrintTicket(AnsiString ticketId, AnsiString terminalId, AnsiString stub, int code, bool paper) {
+	AnsiString cmdCode = "P02";
+
+	AnsiString reqText =terminalId +";" +ticketId +";" +code +";";		// +controller->operatorId;
+
+	AnsiString retCode = TransComm(cmdCode, reqText);
+
+	return (retCode =="0") ? 0 :-1;
+}
+
+// ------------------------------------------------------------------------------
+int CTransComm::GetPendingPrizes(CTerminal *terminal, AnsiString gameId, AnsiString termId, int count) {
+	int retCount = 0;
+
+	AnsiString cmdCode = "P03";
+
+	AnsiString operatorId ="";	//controller->operatorId;
+	AnsiString terminalId =terminal->xmlConfig->TerminalID;
+	AnsiString reqText =terminalId +";" +(gameId +"-"+termId) +";"; //+controller->operatorId +";" +IntToStr(count);
+
+	AnsiString prizesText = TransComm(cmdCode, reqText);
+
+	char *packData  =prizesText.c_str();
+	int len =0, idxCol =0, idxRow =0;
+	AnsiString str ="";
+	AnsiString items[3];
+	while(len <=prizesText.Length()){
+		if (packData[len] =='\t'){
+			items[idxRow] =str;
+			str ="";
+			idxRow ++;
+		}else if (packData[len] =='\n'){
+			items[idxRow] =str;
+			//
+			AnsiString ticketId =items[0].Trim();
+			AnsiString bonus =items[1].Trim();
+			if (ticketId.Length()==14 && bonus.Length()>=1){
+				//从本地数据库中查询并保存到窗口
+				Ticket ticket;
+				if (1){				//controller->dbSupport->FindTicket(ticketId, ticket)){
+					CTicketGrid *grid =terminal->panel->TicketGrid;
+					grid->InsertBlankRow(1);		//插入一新空行
+					AnsiString gameCode =ticket.gameId +"-" +ticket.gameAdapterId;
+					AnsiString stubSerialNo =terminal->PickupSequenceFromStub(ticket.stub, gameCode);
+					grid->Cells[1][1] =ticketId;
+					grid->Cells[2][1] =stubSerialNo;
+					grid->Cells[3][1] =bonus;
+					grid->Cells[4][1] =terminal->GetStakeNameById(ticket.gameId ,ticket.gameAdapterId);    //计算出来的彩种显示列
+					grid->Cells[5][1] =gameCode;
+					grid->Cells[6][1] ="20";
+					grid->Cells[7][1] ="1";		//线上的单子
+					retCount ++;
+				}
+            }
+			//
+			str ="";
+			idxCol ++;
+			idxRow =0;
+		}else{
+			str +=packData[len];
+		}
+		len ++;
+	}
+	//
+	controller->logSupport->WriteLogWithTime("从服务器取中奖票：" +prizesText);
+
+	return retCount;
+}
+
+// ------------------------------------------------------------------------------
+bool CTransComm::CashPrize(AnsiString ticketId, int bonus) {
+	AnsiString cmdCode = "P04";
+
+	AnsiString stationId ="";	//controller->merchant->MerchantId;
+	AnsiString operatorId ="";	//controller->operatorId;
+	AnsiString reqText =stationId +";" +ticketId +";" +operatorId;
+
+	AnsiString retCode = TransComm(cmdCode, reqText);
+
+	controller->logSupport->WriteLogWithTime("向服务器标记兑奖完成:" +retCode);
+
+	return (retCode =="0") ? 0 :-1;
+}
+
+// ------------------------------------------------------------------------------
+void CTransComm::QueryTermList(AnsiString gameId, TStrings *terms) {
+	AnsiString cmdCode = "Q01";
+
+	AnsiString termList = TransComm(cmdCode, gameId);
+
+	terms->Text =termList;
+}
+
+// ------------------------------------------------------------------------------
+bool CTransComm::Login(AnsiString name, AnsiString passwd) {
+	AnsiString cmdCode = "P05";
+
+	AnsiString stationId ="";	//controller->merchant->MerchantId;
+	AnsiString stationPwd ="";	//controller->merchant->MerchantPassword;
+	AnsiString reqText =stationId +";" +stationPwd +";" +name +";" +passwd;
+
+	AnsiString retCode = TransComm(cmdCode, reqText);
+
+	return (retCode =="0") ? true : false;
+}
+
+bool CTransComm::Logout() {
+	AnsiString cmdCode = "P06";
+
+	AnsiString reqText ="";	//controller->merchant->MerchantId;
+
+	AnsiString retCode = TransComm(cmdCode, reqText);
+
+	return (retCode =="0") ? true : false;
+}
+
+// ------------------------------------------------------------------------------
+AnsiString CTransComm::TransComm(AnsiString cmd, AnsiString request) {
+	DWORD retCode;
+	TClientSocket *TcpClient;
+	try {
+		TcpClient = new TClientSocket(MainForm);
+		try {
+			TcpClient->ClientType = ctBlocking;
+			TcpClient->Host ="host";		//controller->merchant->TicketServerHost;
+			TcpClient->Port =8888;			//controller->merchant->TicketServerPort;
+			TcpClient->Active = true;
+			// 打包发送
+			DWORD len = htonl(request.Length());
+			TcpClient->Socket->SendBuf(&len, 4); 	// 头
+			DWORD command;
+			if (cmd =="P05"){				//Login
+				command = htonl(0x00000001);
+			}else if (cmd =="P01") {		//Fetch TC Ticket
+				command = htonl(0x00000002);
+			}else if (cmd =="P02") {		//Print Ticket
+				command = htonl(0x00000003);
+			}else if (cmd =="P03") {		//Fetch Prize Ticket
+				command = htonl(0x00000007);
+			}else if (cmd =="P04") {		//Cash Bonus
+				command = htonl(0x00000008);
+			}else if (cmd =="P06") {		//Logout  Return Ticket
+				command = htonl(0x00000004);
+			}else if (cmd =="Q01") {		//Query Term List
+				command = htonl(0x00000006);
+			}
+			TcpClient->Socket->SendBuf(&command, 4); // 命令
+			TcpClient->Socket->SendBuf(request.c_str(), request.Length()); // 正文
+			// 接收
+			int nRead = 0, idx = 0, nTimes = 0;
+			BYTE bys[sizeof(DWORD)];
+			memset(bys, 0, sizeof(bys));
+			while (idx < 4) {
+				nRead = TcpClient->Socket->ReceiveBuf(bys + idx, 4 - idx);
+				idx += nRead;
+				nTimes++;
+				if (nTimes >= 500)
+					break;
+				Sleep(60);
+			}
+			DWORD * rcode = (DWORD*) bys;
+			retCode = ntohl(*rcode);
+			//如果是取票或取奖则根据长度继续读
+			if (cmd =="P01" || cmd =="P03" ||cmd =="Q01") {
+				int packLen =int(retCode);
+				//接收数据
+				if (packLen >0){
+					nRead =0; idx =0; nTimes =0;
+					char *packData  =new char[packLen];
+					memset(packData, 0, packLen);
+					while (idx <packLen){
+						nRead =TcpClient->Socket->ReceiveBuf(packData +idx, packLen-idx);
+						idx +=nRead; nTimes ++;
+						if (nTimes >=1000) break;
+						Sleep(60);
+					}
+					return AnsiString(packData);
+				}else{
+                	return "";
+				}
+			}
+		}
+		catch (...) {
+			//ShowMessage("Socket Error!");
+		}
+	}
+	__finally {
+		TcpClient->Active = false;
+		delete TcpClient;
+	}
+	return IntToStr((int)retCode);
+}
+

@@ -1,0 +1,175 @@
+{*******************************************************************************
+
+  Advanced Application Controls v2.4
+  FILE: auThread.pas - auThread component. The auThread used in threads of
+              the auHTTP and auAutoUpgrader components.
+
+  Copyright (c) 1998-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+*******************************************************************************}
+{$I auDefines.inc}
+
+unit auThread;
+
+interface
+
+uses
+  Windows, Classes;
+
+type
+  TauCustomThread = class;
+  
+  { TauEventThread }
+  TauEventThread = class
+  private
+    FHandle: THandle;
+    FThreadID: THandle;
+    FTerminated: Boolean;
+    FSuspended: Boolean;
+    FFreeOnTerminate: Boolean;
+    FReturnValue: Integer;
+    FRunning: Boolean;
+    FMethod: TThreadMethod;
+    FSynchronizeException: TObject;
+
+    // addons
+    FOnExecute,
+    FOnException,
+    FOnTerminate: TNotifyEvent;
+
+    // for internal use
+    Owner: TauCustomThread;
+
+    function  GetPriority: TThreadPriority;
+    procedure SetPriority(Value: TThreadPriority);
+    procedure SetSuspended(Value: Boolean);
+
+    // addons
+    procedure CallTerminate;    
+    procedure CallException;
+  protected
+    procedure DoTerminate; //virtual;
+    procedure Execute; //virtual;
+    procedure Synchronize(Method: TThreadMethod);
+    property ReturnValue: Integer read FReturnValue write FReturnValue;
+    property Terminated: Boolean read FTerminated;
+
+    function CreateThread: TauEventThread;
+    function RecreateThread: TauEventThread;
+  public
+    constructor Create(aOwner: TauCustomThread);
+    destructor Destroy; override;
+    procedure Resume;
+    procedure Suspend;
+    procedure Terminate;
+    function WaitFor:{$IFDEF D4}LongWord{$ELSE}Integer{$ENDIF};
+
+    property FreeOnTerminate: Boolean read FFreeOnTerminate write FFreeOnTerminate;
+    property Handle: THandle read FHandle;
+    property Priority: TThreadPriority read GetPriority write SetPriority;
+    property Suspended: Boolean read FSuspended write SetSuspended;
+    property ThreadID: THandle read FThreadID;
+
+    property OnExecute: TNotifyEvent read FOnExecute write FOnExecute;
+    property OnException: TNotifyEvent read FOnException write FOnException;
+    property OnTerminate: TNotifyEvent read FOnTerminate write FOnTerminate;    
+  end;
+
+  { TauCustomThread }
+  TauCustomThread = class(TComponent)
+  private
+    FThread: TauEventThread;
+    FDesignSuspended,
+    FHandleExceptions,              // handle all exceptions within thread and do not raise them in the OnExecute event handler
+    FFreeOwnerOnTerminate: Boolean; // destroys owner on thread on terminate, if True. AK: July 6, 2002
+    FWaitThread: Boolean;
+    FWaitTimeout: Cardinal;    
+
+    FOnWaitTimeoutExpired: TNotifyEvent;
+
+    { for internal use }
+    FSyncMethod: TNotifyEvent;
+    FSyncParams: Pointer;
+
+    procedure InternalSynchronization;
+
+    function  GetPriority: TThreadPriority;
+    procedure SetPriority(Value: TThreadPriority);
+    function  GetSuspended: Boolean;
+    procedure SetSuspended(Value: Boolean);
+    function  GetRunning: Boolean;
+    function  GetTerminated: Boolean;
+    function  GetThreadID: THandle;
+
+    function  GetOnException: TNotifyEvent;
+    procedure SetOnException(Value: TNotifyEvent);
+    function  GetOnExecute: TNotifyEvent;
+    procedure SetOnExecute(Value: TNotifyEvent);
+    function  GetOnTerminate: TNotifyEvent;
+    procedure SetOnTerminate(Value: TNotifyEvent);
+
+    function  GetHandle: THandle;
+    function  GetReturnValue: Integer;
+    procedure SetReturnValue(Value: Integer);
+  protected
+    procedure Loaded; override;
+    procedure DoWaitTimeoutExpired; //virtual;
+  public
+    constructor Create(aOwner: TComponent); override;
+    destructor Destroy; override;
+
+    { public methods and properties }
+    function  Execute: Boolean; // virtual;
+    procedure Synchronize(Method: TThreadMethod); //virtual;
+    procedure SynchronizeEx(Method: TNotifyEvent; Params: Pointer); //virtual;
+    procedure Suspend;
+    procedure Resume;
+    procedure Terminate(Imediately: Boolean); //virtual;
+    function  WaitFor:{$IFDEF D4}LongWord{$ELSE}Integer{$ENDIF};
+
+    property Handle: THandle read GetHandle;
+    property Running: Boolean read GetRunning;
+    property Terminated: Boolean read GetTerminated;
+    property ThreadID: THandle read GetThreadID;
+    property ReturnValue: Integer read GetReturnValue write SetReturnValue;
+    property FreeOwnerOnTerminate: Boolean read FFreeOwnerOnTerminate write FFreeOwnerOnTerminate default False;
+
+    // properties
+    property HandleExceptions: Boolean read FHandleExceptions write FHandleExceptions default True;
+    property Priority: TThreadPriority read GetPriority write SetPriority default tpNormal;
+    property Suspended: Boolean read GetSuspended write SetSuspended default True;
+    property WaitThread: Boolean read FWaitThread write FWaitThread default False;
+    property WaitTimeout: Cardinal read FWaitTimeout write FWaitTimeout default 0;    
+
+    // events
+    property OnException: TNotifyEvent read GetOnException write SetOnException;
+    property OnExecute: TNotifyEvent read GetOnExecute write SetOnExecute;
+    property OnTerminate: TNotifyEvent read GetOnTerminate write SetOnTerminate;
+    property OnWaitTimeoutExpired: TNotifyEvent read FOnWaitTimeoutExpired write FOnWaitTimeoutExpired;
+  end;
+
+  { TauThread }
+  TauThread = class(TauCustomThread)
+  published
+    property HandleExceptions;
+    property Priority;
+    property Suspended;
+    property WaitThread;
+    property WaitTimeout;
+
+    property OnException;
+    property OnExecute;
+    property OnTerminate;
+    property OnWaitTimeoutExpired;
+  end;
+
+implementation

@@ -1,0 +1,283 @@
+{*******************************************************************************
+
+  Advanced Application Controls v2.4
+  FILE: auAutoUpgrader.pas - AutoUpgrader component.
+
+  Copyright (c) 1998-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+*******************************************************************************}
+{$I auDefines.inc}
+
+unit auAutoUpgrader;
+
+interface
+
+uses
+  Windows, Messages, Classes, Controls, Graphics,
+  auHTTP;
+
+const
+  LanguageResEntryPoint = 41000;
+
+  auWizardTitle      = 0;
+  auDownloadingFiles = 1;
+  auUpdateCompleted  = 2;
+  auCurrentFile      = 3;
+  auAllFiles         = 4;
+  auDownloadingFrom  = 5;
+  auFileSize         = 6;
+  auTransferRate     = 7;
+  auEstimatedTime    = 8;
+  auDownloadingOf    = 9;
+  auSuccessUpdate    = 10;
+  auEnterPassword    = 11;
+  auUsername         = 12;
+  auPassword         = 13;
+
+  auYes              = 14;
+  auNo               = 15;
+  auOK               = 16;
+  auCancel           = 17;
+  auNext             = 18;
+  auLater            = 19;
+
+  auWarning          = 20;
+  auError            = 21;
+  auPreparing        = 22;
+  auWelcome          = 23;
+  auNoUpdate         = 24;
+  auNoInfoFile       = 25;
+  auHostUnreachable  = 26;
+  auInterrupt        = 27;
+  auLostFile         = 28;
+  auPasswordRequired = 29;
+  auConnectionLost   = 30;
+
+  auAutoUpgraderStr  = LanguageResEntryPoint - 1;
+  auDelphiStr        = LanguageResEntryPoint - 2;
+  auAppTitle         = LanguageResEntryPoint - 3;
+
+type
+  TauAutoUpgrader = class;
+  TauAutoUpgraderLanguage = (wlAuto, wlEnglish, wlRussian,
+                             wlGerman, wlFrench, wlSpanish,
+                             wlPortuguese, wlPortugueseBrazilian,
+                             wlItalian, wlDutch, wlDanish,
+                             wlSwedish, wlFinnish, wlEstonian,
+                             wlUkrainian, wlCzech, wlHungarian,
+                             wlRomanian, wlCatalan, wlBasque, wlAfrikaans,
+                             wlChineseTraditional, wlChineseSimplified,
+                             wlIndonesian, wlMalay, wlIcelandic);
+  TacMiscFilesUpgradeBehavior = (mfuAlwaysDownload, mfuOnlyIfSizeDifferent);
+  TauAutoUpgraderVersionControl = (byDate, byNumber);
+  TacUpgradeMethod = (umSelfUpgrade, umUseExternalSetup, umRedirectToURL);
+
+  { InfoFile structure }
+  TauAutoUpgraderInfo = class(TPersistent)
+  private
+    FFiles: TStrings;
+    FUpgradeMethod: TacUpgradeMethod;
+    FUpgradeMsg: String;
+
+    procedure SetFiles(const Value: TStrings);
+  public
+    constructor Create;
+    destructor Destroy; override;
+  published
+    property Files: TStrings read FFiles write SetFiles;
+    property UpgradeMethod: TacUpgradeMethod read FUpgradeMethod write FUpgradeMethod default umSelfUpgrade;
+    property UpgradeMsg: String read FUpgradeMsg write FUpgradeMsg;
+  end;
+
+  TauAutoUpgraderShowMessages = set of (mAskUpgrade, mConnLost, mHostUnreachable, mLostFile, mNoInfoFile, mNoUpdateAvailable, mPasswordRequest);
+  TauAutoUpgraderWizard = class(TPersistent)
+  private
+    FEnabled: Boolean;
+    FPicture: TPicture;
+    FLanguage: TauAutoUpgraderLanguage;
+    FStayOnTop: Boolean;
+
+    procedure SetPicture(const Value: TPicture);
+    procedure SetLanguage(Value: TauAutoUpgraderLanguage);
+  public
+    constructor Create(aOwner: TComponent);
+    destructor Destroy; override;
+  published
+    property Enabled: Boolean read FEnabled write FEnabled default True;  
+    property Pic118x218: TPicture read FPicture write SetPicture;
+    property Language: TauAutoUpgraderLanguage read FLanguage write SetLanguage default wlAuto;
+    property StayOnTop: Boolean read FStayOnTop write FStayOnTop default True;
+  end;
+
+  { TauAutoUpgrader }
+  TAUBeginUpgradeEvent = procedure(Sender: TObject;
+                                     const UpgradeMsg: String;
+                                     UpgradeMethod: TacUpgradeMethod;
+                                     Files: TStringList;
+                                     var CanUpgrade: Boolean) of object;
+  TAUFileStartEvent = procedure(Sender: TObject; const FileURL: String; FileSize: Integer; FileTime: TDateTime; var CanUpgrade: Boolean) of object;                                     
+  TAUFileDoneEvent = procedure(Sender: TObject; const FileName: String) of object;
+  TAUHostUnreachableEvent = procedure(Sender: TObject; const URL, Hostname: String) of object;
+  TAULostFileEvent = procedure(Sender: TObject;
+                                 const FileURL: String;
+                                 ErrorCode: Integer;
+                                 var ContinueUpgrade: Boolean) of object;
+  TAUProgressEvent = procedure(Sender: TObject;
+                                 const FileURL: String;
+                                 FileSize, BytesRead,
+                                 ElapsedTime, EstimatedTimeLeft: Integer;
+                                 PercentsDone, TotalPercentsDone: Byte;
+                                 TransferRate: Single) of object;
+  TauAutoUpgrader = class(TauCustomHTTP)
+  private
+    FAutoCheck: Boolean;
+
+    FInfoFile: TauAutoUpgraderInfo;
+    FInfoFileURL: String;
+
+    FVersionControl: TauAutoUpgraderVersionControl;
+    FVersionDate: String;
+    FVersionDateAutoSet: Boolean;
+    FVersionNumber: String;
+    
+    FMiscFilesUpgrade: TacMiscFilesUpgradeBehavior;
+    FRestartParams: String;
+    FShowMessages: TauAutoUpgraderShowMessages;
+    FWizard: TauAutoUpgraderWizard;
+
+    // events
+    FOnBeginUpgrade: TAUBeginUpgradeEvent;
+    FOnEndUpgrade: TNotifyEvent;
+    FOnLaterUpgrade: TNotifyEvent;
+    FOnProgress: TAUProgressEvent;
+    FOnFileStart: TAUFileStartEvent;
+    FOnFileDone: TAUFileDoneEvent;
+    FOnDoOwnCloseAppMethod: TNotifyEvent;
+    FOnAfterRestart: TNotifyEvent;
+
+    // error events
+    FOnAborted: TNotifyEvent;
+    FOnConnLost: TNotifyEvent;
+    FOnHostUnreachable: TAUHostUnreachableEvent;
+    FOnNoUpdateAvailable: TNotifyEvent;
+    FOnNoInfoFile: TNotifyEvent;
+    FOnLostFile: TAULostFileEvent;
+    FOnPasswordRequest: TauHTTPPasswordRequestEvent;
+
+    // internal variables
+    FHandle: THandle;
+    FAborted: Boolean;
+    FAutoCheckDone, FIsAutoCheck: Boolean;
+    FQueryInfoStage: Boolean;
+    FUpdateMethod: TacUpgradeMethod; { assigned after parsing of info-file }
+    FDownloadQueue: TStringList;
+    FCurrentFileName: String;
+    FCurrentFileTime: TDateTime;    
+    FCurrentFileIndex: Integer;
+    FRestarting: Boolean;
+
+    procedure SetAutoCheck(Value: Boolean);
+    procedure SetQueryInfoStage(Value: Boolean);
+    procedure SetRestartParams(const Value: String);
+    procedure SetVersionDateAutoSet(Value: Boolean);
+    function  IsDefaultParams: Boolean;
+
+{$IFDEF LowerCB5}
+    function  GetLoginUsername: String;
+    procedure SetLoginUsername(const Value: String);
+    function  GetLoginPassword: String;
+    procedure SetLoginPassword(const Value: String);
+{$ENDIF}
+
+    // acHTTP events
+    procedure HTTPHeaderInfo(Sender: TObject; const RawHeadersCRLF, ContentType, ContentLanguage, ContentEncoding, Location: String;
+                             ContentLength: Integer; Date, LastModified, Expires: TDateTime; var ContinueDownload: Boolean);
+    procedure HTTPDone(Sender: TObject; const ContentType: String; FileSize: Integer; Stream: TStream);
+    procedure HTTPDoneInterrupted(Sender: TObject);
+    procedure HTTPProgress(Sender: TObject; const ContentType: String;
+                           FileSize, BytesRead, ElapsedTime, EstimatedTimeLeft: Integer;
+                           PercentsDone: Byte; TransferRate: Single; Stream: TStream);
+    procedure HTTPConnLost(Sender: TObject; const ContentType: String; FileSize, BytesRead: Integer; Stream: TStream);
+    procedure HTTPError(Sender: TObject; ErrorCode: Integer; Stream: TStream);
+    procedure HTTPHostUnreachable(Sender: TObject);
+    procedure HTTPPasswordRequest(Sender: TObject; const Realm: String; var TryAgain: Boolean);
+
+    // internal subroutines
+    procedure ParseInfoFile(Stream: TStream);
+    procedure DoUpgrade(FirstFile: Boolean);
+    procedure SafeTerminate;
+    procedure Relaunch(const ParamStr: String);
+
+    procedure UpdateTimer;
+    procedure DeleteTemporaryFiles;
+  protected
+    procedure WndProc(var Message: TMessage); virtual;
+  public
+    constructor Create(aOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Loaded; override;
+
+    procedure CheckUpdate; // Check InfoURL for update
+    procedure Abort;
+    procedure RestartApplication(const Params: String {$IFDEF D4}=''{$ENDIF});
+
+    property QInfoStage: Boolean read FQueryInfoStage write SetQueryInfoStage;
+    property Restarting: Boolean read FRestarting;
+  published
+    // derived properties
+    property Proxy;
+    property ThreadPriority;
+    property TransferBufferSize;
+    property HTTPUsername: String read {$IFDEF LowerCB5} GetLoginUsername {$ELSE} FLoginUsername {$ENDIF} write {$IFDEF LowerCB5} SetLoginUsername {$ELSE} FLoginUsername {$ENDIF} stored False;
+    property HTTPPassword: String read {$IFDEF LowerCB5} GetLoginPassword {$ELSE} FLoginPassword {$ENDIF} write {$IFDEF LowerCB5} SetLoginPassword {$ELSE} FLoginPassword {$ENDIF} stored False;
+    // derived events
+    property OnProxyAuthenticationRequest;
+
+    property AutoCheck: Boolean read FAutoCheck write SetAutoCheck default False;
+    property InfoFile: TauAutoUpgraderInfo read FInfoFile write FInfoFile;
+    property InfoFileURL: String read FInfoFileURL write FInfoFileURL;
+    property RestartParams: String read FRestartParams write SetRestartParams stored IsDefaultParams;
+
+    property MiscFilesUpgrade: TacMiscFilesUpgradeBehavior read FMiscFilesUpgrade write FMiscFilesUpgrade default mfuAlwaysDownload;
+    property VersionControl: TauAutoUpgraderVersionControl read FVersionControl write FVersionControl default byDate;
+    property VersionDate: String read FVersionDate write FVersionDate;
+    property VersionDateAutoSet: Boolean read FVersionDateAutoSet write SetVersionDateAutoSet; // NO DEFAULT!!!
+    property VersionNumber: String read FVersionNumber write FVersionNumber;
+    property ShowMessages: TauAutoUpgraderShowMessages read FShowMessages write FShowMessages default [mAskUpgrade, mConnLost, mLostFile, mPasswordRequest];
+    property Wizard: TauAutoUpgraderWizard read FWizard write FWizard;
+
+    // events
+    property OnBeginUpgrade: TAUBeginUpgradeEvent read FOnBeginUpgrade write FOnBeginUpgrade;
+    property OnEndUpgrade: TNotifyEvent read FOnEndUpgrade write FOnEndUpgrade;
+    property OnLaterUpgrade: TNotifyEvent read FOnLaterUpgrade write FOnLaterUpgrade;
+    property OnProgress: TAUProgressEvent read FOnProgress write FOnProgress;
+    property OnFileStart: TAUFileStartEvent read FOnFileStart write FOnFileStart;
+    property OnFileDone: TAUFileDoneEvent read FOnFileDone write FOnFileDone;
+    property OnDoOwnCloseAppMethod: TNotifyEvent read FOnDoOwnCloseAppMethod write FOnDoOwnCloseAppMethod;
+    property OnAfterRestart: TNotifyEvent read FOnAfterRestart write FOnAfterRestart;
+
+    // error events
+    property OnAborted: TNotifyEvent read FOnAborted write FOnAborted; // this is not the same as OnAborted in HTTP!
+    property OnConnLost: TNotifyEvent read FOnConnLost write FOnConnLost;
+    property OnHostUnreachable: TAUHostUnreachableEvent read FOnHostUnreachable write FOnHostUnreachable;
+    property OnNoUpdateAvailable: TNotifyEvent read FOnNoUpdateAvailable write FOnNoUpdateAvailable;
+    property OnNoInfoFile: TNotifyEvent read FOnNoInfoFile write FOnNoInfoFile;
+    property OnLostFile: TAULostFileEvent read FOnLostFile write FOnLostFile;
+    property OnPasswordRequest: TauHTTPPasswordRequestEvent read FOnPasswordRequest write FOnPasswordRequest;
+  end;
+
+function AUDateToDate(const AUDate: String): TDateTime;
+function DateToAUDate(const Date: TDateTime): String;
+function AULangStr(Ident: Integer): String;
+function AUFmtLangStr(Ident: Integer; const Args: Array of const): String;
+
+implementation

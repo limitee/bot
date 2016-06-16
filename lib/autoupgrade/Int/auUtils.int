@@ -1,0 +1,125 @@
+{*******************************************************************************
+
+  AutoUpgrader Professional
+  FILE: auUtils.pas - Various routines
+
+  Copyright (c) 1998-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+*******************************************************************************}
+{$I auDefines.inc}
+
+unit auUtils;
+
+interface
+
+uses Windows, Classes;
+
+{ Whether Internet connection active }
+function IsOnline: Boolean;
+{ Calculates percents. (Result = Round(Part * 100 / Entire)) }
+function PercentsOf(Entire, Part: Extended): Byte;
+{ Returns executable file by specified extension }
+function  GetExecutableByExtension(const Extension: String): String;
+{ Opens the specified URL address. In current or new window }
+procedure OpenURL(URL: String; InNewWindow: Boolean);
+{ returns path to Temporary directory }
+function GetTempDir: String;
+{ returns path to System directory }
+function GetSystemDir: String;
+{ Determinates wether the directory exists }
+function DirectoryExists(const DirName: String): Boolean;
+
+{ Performs "base64" encoding for the strings (size can be up to 2GB)
+ return value -- encoded string }
+function Base64Encode(const Value: String): String;
+{ generates the boundary for multipart data }
+function GenerateAttachBoundary(Salt: Char): String;
+{ returns MIME-type by file extension }
+function GetMIMEType(EXT: String): String;
+
+
+{ STRING / FILENAME ROUTINES (check out AppControls.hlp for reference) }
+type
+  TacSplitStrSide = (LEFT, RIGHT);
+  TacSplitStrSides = set of TacSplitStrSide;
+procedure SplitStr(SubStr, Str: String;
+            var FirstPart, SecondPart: String;
+            MainSide: TacSplitStrSide;
+            LeaveSeparatorOn: TacSplitStrSides);
+{$IFNDEF D5}
+function  IncludeTrailingBackslash(const St: String): String;
+function  ExcludeTrailingBackslash(const St: String): String;
+{$ENDIF}
+procedure SplitFilenameAndParams(var FileName, Params: String);
+
+function ParseURL(URL: String; var Protocol, HostName, URLPath,
+  Username, Password, ExtraInfo: String; var Port: Word): Boolean;
+function URLToHostName(const URL: String): String;
+function URLToFileName(const URL: String): String;
+
+{ Compares two strings which contains version number.
+  (i.e: compare "2.0.4.0" and "13.46.21.45").
+  Returns:
+    <0 if NewVersion < OldVersion
+    =0 if NewVersion = OldVersion
+    >0 if NewVersion > OldVersion
+  Modifications: If some section of version number contains
+  characters (i.e: "1.02b"), the section will be compared as
+  usual string with StrComp(). }
+function VersionCheck(const NewVersion, OldVersion: String): ShortInt;
+
+
+// DATE/TIME routines
+{ converts GMT time to local time }
+function GMTToLocalTime(GMTTime: TDateTime): TDateTime;
+{ converts string representation of Internet date/time into TDateTime }
+function InternetTimeToDateTime(InternetTime: String): TDateTime;
+{ converts the date/time to FileTime record }
+function DateTimeToFileTime(Time: TDateTime): TFileTime;
+{ converts the FileTime to Delphi-friendly TDateTime variable }
+function FileTimeToDateTime(Time: TFileTime): TDateTime;
+{ Specifies the date/time for the file }
+function SetFileTimes(const FileName: String; const Created: TDateTime {$IFDEF D4}= -1{$ENDIF}; Modified: TDateTime {$IFDEF D4}= -1{$ENDIF}; Accessed: TDateTime {$IFDEF D4}= -1{$ENDIF}): Boolean;
+
+
+{ converts the two 32bit Integer to unisgned Extended (float) type }
+function Int2x32ToInt64(const IntHi, IntLo: DWord): LongLong;
+{ Returns the file size by file name}
+function ExtractFileSize(const FileName: String): LongLong;
+{ Loads the resource to stream }
+function LoadResourceToStream(Instance: hInst; ResName, ResType: PChar; Stream: TStream): Boolean;
+{ close the application very quickly }
+procedure ShutdownApplication;
+
+{ initialize MS-style record. fill it with 0 and set struct size to first 4 bytes }
+procedure InitMSRecord(var Rec; Size: Integer);
+
+const
+  CRLF = #13#10;
+  D_CRLF = #13#10#13#10;
+  HTTPPrefix  = 'http://';
+
+{$IFNDEF D4}
+  TIME_ZONE_ID_INVALID = DWORD($FFFFFFFF);
+  TIME_ZONE_ID_UNKNOWN  = 0;
+  TIME_ZONE_ID_STANDARD = 1;
+  TIME_ZONE_ID_DAYLIGHT = 2;
+{$ENDIF}
+
+type
+  TDoubleWord = packed record
+    case Integer of
+      0: (LoWord, HiWord: Word);
+      1: (DWord: DWord);
+  end;
+
+implementation

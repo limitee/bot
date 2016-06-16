@@ -1,0 +1,18 @@
+//---------------------------------------------------------------------------
+
+#ifndef FileDataLoaderH
+#define FileDataLoaderH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+
+
+class CController;
+
+class CFileDataLoader : TThread
+{
+
+
+
+};
+
+#endif

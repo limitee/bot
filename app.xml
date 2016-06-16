@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="GB2312"?>
+<DataCenter CenterCode="hb" ServerHost="www.xdbao.cn" ServerPort="8888" PrinterCom="COM17" PrinterComParam="115200,8,N,0" BinFileDir="F:\LottChina\data\" HexFileDir="E:\LottChina\data\" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="TerminalConfig.xsd" Desc="彩票终端机集群配置，询Q:781605888或微信lottchina">
+	<TerminalParam TerminalID="90116" HardwareRef="GLOT-C8" LotteryPosRef="36.48.00" ConnectionKey="123456" BoxCom="COM8" UKeyPassword="88890116" SalesAccount="001" SalesPassword="123456" EnableAutoRun="true" ErrorTimeoutRetry="true"/>
+	<TerminalParam TerminalID="90147" HardwareRef="GLOT-C8" LotteryPosRef="36.48.00" ConnectionKey="123456" BoxCom="COM3" UKeyPassword="88890147" SalesAccount="001" SalesPassword="123456" EnableAutoRun="true" ErrorTimeoutRetry="true"/>
+	<TerminalParam TerminalID="90177" HardwareRef="GLOT-C8" LotteryPosRef="36.48.00" ConnectionKey="123456" BoxCom="COM16" UKeyPassword="88890177" SalesAccount="001" SalesPassword="123456" EnableAutoRun="true" ErrorTimeoutRetry="true"/>
+	<TerminalParam TerminalID="95037" HardwareRef="GLOT-C8" LotteryPosRef="36.48.00" ConnectionKey="123456" BoxCom="COM7" UKeyPassword="88895037" SalesAccount="001" SalesPassword="123456" EnableAutoRun="true" ErrorTimeoutRetry="true"/>
+</DataCenter>

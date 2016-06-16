@@ -1,0 +1,49 @@
+//---------------------------------------------------------------------------
+
+#ifndef PrintceptorH
+#define PrintceptorH
+//---------------------------------------------------------------------------
+
+#include "Connection.h"
+#include "BoxMessage.h"
+#include "Array.h"
+
+
+class Printceptor {
+
+	private:
+		bool printReceiptFlag;
+
+		bool interceptFlag;
+
+		void sendData(BoxMessage::BoxMessageEnum _command, Array<BYTE> _data);
+
+		void sendMessage(BoxMessage* message);
+
+	public:
+		Printceptor();
+
+		void startIntercept(int connStringType, char* connString);
+
+		void endIntercept();
+
+		void pressKeyboard(BYTE keys[], int keys_len);
+
+		void sendPrinterData
+
+		void (__closure *PF_CommReceived)(BYTE* data, int len);
+
+		void (__closure *PF_ConnChanged)(bool isConnected);
+
+		//
+		Connection* connection;
+
+		void onConnectChanged(bool isConnected);
+
+		void handleMessagesFromBox(BoxMessage* message);
+
+		void triggerBOX_POS_DATA(BoxMessage* message);
+};
+
+
+#endif

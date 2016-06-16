@@ -1,0 +1,329 @@
+{*******************************************************************************
+
+  Advanced Application Controls v2.4
+  FILE: auHTTP.pas - auHTTP component. Used as base class for acAutoUpgrader
+          in the AppControls v2.3 and later
+
+  Copyright (c) 1998-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+*******************************************************************************}
+{$I auDefines.inc}
+
+unit auHTTP;
+
+interface
+
+uses
+  Windows, Classes, WinInet,
+  auThread;
+
+const
+  auDefaultProxyPort = 8080;
+
+type
+  { TauLoginComponent }
+  TauLoginComponent = class(TComponent)
+  private
+    procedure ReadData(Stream: TStream);
+    procedure WriteData(Stream: TStream);
+  protected
+    FLoginUsername, FLoginPassword: String;
+      
+    procedure DefineProperties(Filer: TFiler); override;
+  end;
+
+  { TauHTTP }
+  TauHTTPProgressEvent = procedure(Sender: TObject; const ContentType: String;
+                                   DataSize, BytesRead,
+                                   ElapsedTime, EstimatedTimeLeft: Integer;
+                                   PercentsDone: Byte; TransferRate: Single;
+                                   Stream: TStream) of object;
+{$IFNDEF IE3}
+  TauHTTPUploadProgressEvent  = procedure(Sender: TObject;
+                                   DataSize, BytesTransferred,
+                                   ElapsedTime, EstimatedTimeLeft: Integer;
+                                   PercentsDone: Byte; TransferRate: Single) of object;
+  TauHTTPUploadFieldRequest   = procedure(Sender: TObject; FileIndex: Word; UploadStream: TStream; var FieldName, FileName: String) of object;
+{$ENDIF}
+  TauHTTPHeaderInfoEvent      = procedure(Sender: TObject; const RawHeadersCRLF, ContentType, ContentLanguage, ContentEncoding, Location: String;
+                                   ContentLength: Integer; Date, LastModified, Expires: TDateTime; var ContinueDownload: Boolean) of object;
+  TauHTTPStatusChanged        = procedure(Sender: TObject; StatusID: Cardinal; const StatusStr: String) of object;
+  TauHTTPRedirected           = procedure(Sender: TObject; const NewURL: String) of object;
+  TauHTTPDoneEvent            = procedure(Sender: TObject; const ContentType: String; FileSize: Integer; Stream: TStream) of object;
+  TauHTTPConnLostEvent        = procedure(Sender: TObject; const ContentType: String; FileSize, BytesRead: Integer; Stream: TStream) of object;
+  TauHTTPErrorEvent           = procedure(Sender: TObject; ErrorCode: Integer; Stream: TStream) of object;
+  TauHTTPPasswordRequestEvent = procedure(Sender: TObject; const Realm: String; var TryAgain: Boolean) of object;
+  TauHTTPProxyAuthenticationEvent = procedure(Sender: TObject; var ProxyUsername, ProxyPassword: String; var TryAgain: Boolean) of object;
+
+{$IFNDEF IE3}
+  TauHTTPPOSTMethod = (pmFormURLEncoded, pmMultipartFormData);
+{$ENDIF}
+  TauHTTPRequestMethod = (rmAutoDetect, rmGET, rmPOST);
+  TauHTTPAccessType = (atPreconfig, atDirect, atUseProxy);
+  TauHTTPProxy = class(TPersistent)
+  private
+    FAccessType: TauHTTPAccessType;
+    FProxyPort: Integer;
+    FProxyServer: String;
+    FProxyBypass: String;
+
+    function IsUseProxy: Boolean;
+  public
+    constructor Create;
+  published
+    property AccessType: TauHTTPAccessType read FAccessType write FAccessType default atPreconfig;
+    property ProxyPort: Integer read FProxyPort write FProxyPort default auDefaultProxyPort;
+    property ProxyServer: String read FProxyServer write FProxyServer stored IsUseProxy;
+    property ProxyBypass: String read FProxyBypass write FProxyBypass stored IsUseProxy;
+  end;
+
+  TauHTTPRange = class(TPersistent)
+  private
+    FStartRange, FEndRange: Integer;
+  published
+    property StartRange: Integer read FStartRange write FStartRange default 0;
+    property EndRange: Integer read FEndRange write FEndRange default 0;
+  end;
+
+  TauHTTPTimeouts = class(TPersistent)
+  private
+    FConnectTimeout, FReceiveTimeout, FSendTimeout: DWord;
+  published
+    property ConnectTimeout: DWord read FConnectTimeout write FConnectTimeout default 0;
+    property ReceiveTimeout: DWord read FReceiveTimeout write FReceiveTimeout default 0;
+    property SendTimeout: DWord read FSendTimeout write FSendTimeout default 0;
+  end;
+
+  TauBufferSize = 255..MaxInt;  
+  TauCustomHTTP = class(TauLoginComponent)
+  private
+    FAddHeaders: TStrings;
+    FAcceptTypes, FAgent,
+    FOutputFileName: String;
+    FHideOutputFile: Boolean;
+    FURL, FPostData, FReferer: String;
+    FRange: TauHTTPRange;
+    FTimeouts: TauHTTPTimeouts;
+    FTransferBufferSize: TauBufferSize;
+{$IFNDEF IE3}
+    FPOSTMethod: TauHTTPPOSTMethod;
+{$ENDIF}
+    FRequestMethod: TauHTTPRequestMethod;
+    FProxy: TauHTTPProxy;
+    FUseCache, FUseCookies,
+    FWorkOffline: Boolean;
+
+    // success events
+    FOnHeaderInfo: TauHTTPHeaderInfoEvent;
+    FOnDone: TauHTTPDoneEvent;
+    FOnDoneInterrupted: TNotifyEvent;
+    FOnProgress: TauHTTPProgressEvent;
+    FOnStatusChanged: TauHTTPStatusChanged;
+    FOnRedirected: TauHTTPRedirected;
+{$IFNDEF IE3}
+    FOnUploadProgress: TauHTTPUploadProgressEvent;
+    FOnUploadFieldRequest: TauHTTPUploadFieldRequest;
+{$ENDIF}
+    // error events
+    FOnAnyError: TNotifyEvent;
+    FOnAborted: TNotifyEvent;
+    FOnConnLost: TauHTTPConnLostEvent;
+    FOnHostUnreachable: TNotifyEvent;      // no connection
+    FOnHTTPError: TauHTTPErrorEvent;       // read error
+    FOnPasswordRequest: TauHTTPPasswordRequestEvent;
+    FOnProxyAuthenticationRequest: TauHTTPProxyAuthenticationEvent;
+    FOnWaitTimeoutExpired: TNotifyEvent; 
+
+    // internal variables
+    FThread: TauCustomThread;
+    HTTPStream: TStream;
+    HTTPErrorCode: Integer;
+    HTTPSuccess, HTTPTryAgain, HTTPContinueDownload: Boolean;
+    HTTPRawHeadersCRLF, HTTPContentType,
+    HTTPContentLanguage, HTTPContentEncoding, HTTPLocation: String;
+    HTTPDate, HTTPLastModified, HTTPExpires: TDateTime;
+    HTTPData: Pointer; // read buffer
+    HTTPProxyUsername, HTTPProxyPassword: String;
+    HTTPFileSize, HTTPBytesTransferred, HTTPStartTime: Cardinal;
+{$IFNDEF IE3}
+    HTTPUploadRequestHeader: String;
+{$ENDIF}
+    // for OnProgres/OnUploadProgress events
+    ProgressPercentsDone: Byte;
+    ProgressElapsedTime, ProgressEstimatedTime: Cardinal;
+    ProgressTransferRate: Single;
+
+    // WinInet handles
+    hSession, hConnect, hRequest: hInternet;
+    hFile: hFile;
+
+    procedure SetAddHeaders(Value: TStrings);
+    function  GetSuspended: Boolean;
+    procedure SetSuspended(Value: Boolean);
+    function  GetThreadPriority: TThreadPriority;
+    procedure SetThreadPriority(Value: TThreadPriority);
+    function  GetWaitThread: Boolean;
+    procedure SetWaitThread(Value: Boolean);
+    function  GetWaitTimeout: Integer;
+    procedure SetWaitTimeout(Value: Integer);
+    function  GetBusy: Boolean;
+    function  GetFreeOnTerminate: Boolean;
+    procedure SetFreeOnTerminate(Value: Boolean);
+    function  GetFileName: String;
+    function  GetHostName: String;
+
+    function  IsNotDefaultAcceptTypes: Boolean;
+
+    procedure PrepareProgressParams;
+    procedure CloseHTTPHandles;
+    procedure ReleaseHTTPStream;
+
+    // thread management
+    procedure ThreadExecute(Sender: TObject);
+    procedure ThreadException(Sender: TObject);
+    procedure ThreadDone(Sender: TObject);
+    procedure ThreadWaitTimeoutExpired(Sender: TObject);
+
+    // synchronized methods
+    procedure CallHeaderInfo;
+    procedure CallProgress;
+{$IFNDEF IE3}
+    procedure CallUploadProgress;
+{$ENDIF}
+    procedure CallPasswordRequest;
+    procedure CallProxyAuthenticationRequest;
+  protected
+    procedure DoAnyError;
+  public
+    constructor Create(aOwner: TComponent); override;
+    destructor Destroy; override;
+
+    // public methods
+    function  Read: Boolean;
+{$IFNDEF IE3}
+    function  Upload(NumberOfFields: Word): Boolean;
+{$ENDIF}
+    procedure Abort;
+
+    // from TauLoginComponent
+    property Username: String read FLoginUsername write FLoginUsername stored False;
+    property Password: String read FLoginPassword write FLoginPassword stored False;
+
+    // optional properties
+    property Busy: Boolean read GetBusy;
+    property FreeOnTerminate: Boolean read GetFreeOnTerminate write SetFreeOnTerminate;
+    property FileName: String read GetFileName;
+    property HostName: String read GetHostName;
+    property Thread: TauCustomThread read FThread;
+
+    // public properties
+    property AcceptTypes: String read FAcceptTypes write FAcceptTypes stored IsNotDefaultAcceptTypes;
+    property AddHeaders: TStrings read FAddHeaders write SetAddHeaders;
+    property Agent: String read FAgent write FAgent;
+    property Proxy: TauHTTPProxy read FProxy write FProxy;
+    property OutputFileName: String read FOutputFileName write FOutputFileName;
+    property HideOutputFile: Boolean read FHideOutputFile write FHideOutputFile default False;
+    property URL: String read FURL write FURL;
+    property UseCache: Boolean read FUseCache write FUseCache default True;
+    property UseCookies: Boolean read FUseCookies write FUseCookies default True;
+    property POSTData: String read FPOSTData write FPOSTData;
+    property Range: TauHTTPRange read FRange write FRange;
+    property Referer: String read FReferer write FReferer;
+    property RequestMethod: TauHTTPRequestMethod read FRequestMethod write FRequestMethod default rmAutoDetect;
+    property Timeouts: TauHTTPTimeouts read FTimeouts write FTimeouts;
+    property TransferBufferSize: TauBufferSize read FTransferBufferSize write FTransferBufferSize default 4096;
+    property WorkOffline: Boolean read FWorkOffline write FWorkOffline default False;
+
+    // thread properties
+    property Suspended: Boolean read GetSuspended write SetSuspended;
+    property ThreadPriority: TThreadPriority read GetThreadPriority write SetThreadPriority default tpNormal;
+    property WaitThread: Boolean read GetWaitThread write SetWaitThread default False;
+    property WaitTimeout: Integer read GetWaitTimeout write SetWaitTimeout default 0;
+
+    // public events
+    property OnHeaderInfo: TauHTTPHeaderInfoEvent read FOnHeaderInfo write FOnHeaderInfo;    
+    property OnDone: TauHTTPDoneEvent read FOnDone write FOnDone;
+    property OnProgress: TauHTTPProgressEvent read FOnProgress write FOnProgress;
+    property OnStatusChanged: TauHTTPStatusChanged read FOnStatusChanged write FOnStatusChanged;
+    property OnRedirected: TauHTTPRedirected read FOnRedirected write FOnRedirected;
+{$IFNDEF IE3}
+    property OnUploadProgress: TauHTTPUploadProgressEvent read FOnUploadProgress write FOnUploadProgress;
+    property OnUploadFieldRequest: TauHTTPUploadFieldRequest read FOnUploadFieldRequest write FOnUploadFieldRequest;
+{$ENDIF}
+
+    property OnAnyError: TNotifyEvent read FOnAnyError write FOnAnyError;
+    property OnAborted: TNotifyEvent read FOnAborted write FOnAborted;
+    property OnConnLost: TauHTTPConnLostEvent read FOnConnLost write FOnConnLost;
+    property OnDoneInterrupted: TNotifyEvent read FOnDoneInterrupted write FOnDoneInterrupted;
+    property OnPasswordRequest: TauHTTPPasswordRequestEvent read FOnPasswordRequest write FOnPasswordRequest;
+    property OnProxyAuthenticationRequest: TauHTTPProxyAuthenticationEvent read FOnProxyAuthenticationRequest write FOnProxyAuthenticationRequest;
+    property OnHostUnreachable: TNotifyEvent read FOnHostUnreachable write FOnHostUnreachable;
+    property OnHTTPError: TauHTTPErrorEvent read FOnHTTPError write FOnHTTPError;
+    property OnWaitTimeoutExpired: TNotifyEvent read FOnWaitTimeoutExpired write FOnWaitTimeoutExpired;
+  end;
+
+  TauHTTP = class(TauCustomHTTP)
+  published
+    property AcceptTypes;
+    property AddHeaders;
+    property Agent;
+    property Proxy;
+    property URL;
+    property UseCache;
+    property UseCookies;
+    property Username;
+    property OutputFileName;
+    property HideOutputFile;
+    property Password;
+    property POSTData;
+    property Range;
+    property Referer;
+    property RequestMethod;
+//    property Suspended;
+    property Timeouts;
+    property ThreadPriority;
+    property TransferBufferSize;
+    property WaitThread;
+    property WaitTimeout;
+    property WorkOffline;
+
+    // success
+    property OnHeaderInfo;
+    property OnDone;
+    property OnDoneInterrupted;
+    property OnProgress;
+//    property OnStatusChanged;
+    property OnRedirected;
+{$IFNDEF IE3}
+    property OnUploadProgress;
+    property OnUploadFieldRequest;
+{$ENDIF}
+    // errors
+    property OnAnyError;
+    property OnAborted;
+    property OnConnLost;
+    property OnHTTPError;
+    property OnHostUnreachable;
+    property OnPasswordRequest;
+    property OnProxyAuthenticationRequest;
+    property OnWaitTimeoutExpired;    
+  end;
+
+function HTTPReadString(const URL: String; Timeout: Integer {$IFDEF D4} = 0 {$ENDIF}): String;
+
+{$IFDEF USEINTERNAL}
+// routines to hide the HTTP username and password in the DFM
+procedure EncryptUP(Stream: TStream; const U, P: String); // encrypts username/password and puts to stream
+procedure DecryptUP(Stream: TStream; var U, P: String); // retrieves username/password from stream and decrypts them
+{$ENDIF}
+
+implementation

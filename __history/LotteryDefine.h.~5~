@@ -1,0 +1,27 @@
+//---------------------------------------------------------------------------
+#ifndef LotteryStructH
+#define LotteryStructH
+
+#include <vcl.h>
+
+#define LOGIN_URL		"http://www.baidu.com/";
+#define CONFIG_File		"app.xml"
+#define LOG_FILE_NAME	"log.txt"
+
+typedef struct StructTicket
+{
+	AnsiString ticketId;		//票号
+	int stakeLen;				//长度
+	AnsiString ticketNumbers;	//投注号码
+	int multiple;				//倍投数
+	AnsiString gameId;			//游戏
+	AnsiString gameAdapterId;	//玩法
+	int money;					//金额
+	AnsiString terminalId;		//处理打印的终端号
+	int status;					//0 待取	1 取走待打	2 出票完成
+	AnsiString stub;			//票面明文
+}::Ticket;		//定义为全局性的结构
+
+
+#endif
+

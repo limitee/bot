@@ -1,0 +1,551 @@
+<?xml version="1.0" encoding="GB2312"?>
+<TerminalList ServerHost="123.57.64.210" ServerPort="8888" ConnectionKey="123456" BinFileDir="D:\LottChina\TicketCenterNode\data" HexFileDir="D:\LottChina\TicketCenterNode\data" Desc="彩票终端机配置模板" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../TerminalConfig.xsd">
+	<Terminal TerminalID="05008" LotteryKind="TC" ProductType="C8" BoxComParam="COM4" Paperless="true" CurrentNode="0.0.1" PrintConfirmInnerKey="~E" CashPrizeInnerKeyList="~E~E~E~E~E" Desc="注意修改去除屏保等各类参数，防止干扰按键流程">
+		<Keyboard>
+			<KeyboardCode InnerCode="1" KeyboardName="1" KeyboardValue="1"/>
+			<KeyboardCode InnerCode="2" KeyboardName="2" KeyboardValue="2"/>
+			<KeyboardCode InnerCode="3" KeyboardName="3" KeyboardValue="3"/>
+			<KeyboardCode InnerCode="4" KeyboardName="4" KeyboardValue="4"/>
+			<KeyboardCode InnerCode="5" KeyboardName="5" KeyboardValue="5"/>
+			<KeyboardCode InnerCode="6" KeyboardName="6" KeyboardValue="6"/>
+			<KeyboardCode InnerCode="7" KeyboardName="7" KeyboardValue="7"/>
+			<KeyboardCode InnerCode="8" KeyboardName="8" KeyboardValue="8"/>
+			<KeyboardCode InnerCode="9" KeyboardName="9" KeyboardValue="9"/>
+			<KeyboardCode InnerCode="0" KeyboardName="0" KeyboardValue="0"/>
+			<KeyboardCode InnerCode="!" KeyboardName="F1" KeyboardValue="F1"/>
+			<KeyboardCode InnerCode="=" KeyboardName="F2" KeyboardValue="F2"/>
+			<KeyboardCode InnerCode="B" KeyboardName="倍投" KeyboardValue="F5"/>
+			<KeyboardCode InnerCode="Q" KeyboardName="ESC" KeyboardValue="Esc"/>
+			<KeyboardCode InnerCode="E" KeyboardName="回车" KeyboardValue="Enter"/>
+			<KeyboardCode InnerCode="S" KeyboardName="上" KeyboardValue="Up"/>
+			<KeyboardCode InnerCode="X" KeyboardName="下" KeyboardValue="Down"/>
+			<KeyboardCode InnerCode="Z" KeyboardName="左" KeyboardValue="Left"/>
+			<KeyboardCode InnerCode="Y" KeyboardName="右" KeyboardValue="Right"/>
+			<KeyboardCode InnerCode="J" KeyboardName="兑奖" KeyboardValue="D"/>
+			<KeyboardCode InnerCode="W" KeyboardName="玩法选择" KeyboardValue="*"/>
+			<KeyboardCode InnerCode="+" KeyboardName="追加" KeyboardValue="+"/>
+			<KeyboardCode InnerCode="~" KeyboardName="延时" KeyboardValue="Nop"/>
+		</Keyboard>
+		<Game GameNode="0.0" GameID="200" GameName="大乐透" EnterKey="01" DefaultStakeNode="0.0.1">
+			<Stake StakeNode="0.0.1" StakeName="单式" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.2" StakeName="复式" PlayBetId="10-20" Prefix="X" Desc="前拖加后拖，配置中处理前区胆按键，动态库中处理号码中间的跳过后区胆按键">
+				<Choice ChoiceKey="!" JumpTo="0.0.1"/>
+			</Stake>
+			<Stake StakeNode="0.0.3" StakeName="胆拖" PlayBetId="10-30" Prefix="X" Desc="前拖加后拖，配置中处理前区胆按键，动态库中处理号码中间的跳过后区胆按键">
+				<Choice ChoiceKey="!" JumpTo="0.0.1"/>
+			</Stake>
+			<Stake StakeNode="0.0.4" StakeName="追加单式" PlayBetId="60-10" Postfix="+">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.5" StakeName="追加复式" PlayBetId="60-20" Postfix="+" Prefix="X" Desc="前拖加后拖，配置中处理前区胆按键，动态库中处理号码中间的跳过后区胆按键">
+				<Choice ChoiceKey="!" JumpTo="0.0.1"/>
+			</Stake>
+			<Stake StakeNode="0.0.6" StakeName="追加胆拖" PlayBetId="60-30" Postfix="+" Prefix="X" Desc="前拖加后拖，配置中处理前区胆按键，动态库中处理号码中间的跳过后区胆按键">
+				<Choice ChoiceKey="!" JumpTo="0.0.1"/>
+			</Stake>
+		</Game>
+		<Game GameNode="0.1" GameID="00-1" GameName="七星彩" EnterKey="04" DefaultStakeNode="0.1.1">
+			<Stake StakeNode="0.1.1" StakeName="单式" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.1.2"/>
+			</Stake>
+			<Stake StakeNode="0.1.2" StakeName="复式" PlayBetId="1">
+				<Choice ChoiceKey="!" JumpTo="0.1.1"/>
+			</Stake>
+		</Game>
+		<Game GameNode="0.2" GameID="00-2" GameName="排列三" EnterKey="02" DefaultStakeNode="0.2.1">
+			<Stake StakeNode="0.2.1" StakeName="直选单式" PlayBetId="0" Desc="默认直选单式">
+				<Choice ChoiceKey="!" JumpTo="0.2.7"/>
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.2" StakeName="直选复式" PlayBetId="1" Desc="快捷默认直选复式">
+				<Choice ChoiceKey="!" JumpTo="0.2.1"/>
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.3" StakeName="直选和值" PlayBetId="2">
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.7" StakeName="组选单式" PlayBetId="3" Desc="快捷默认组选单式">
+				<Choice ChoiceKey="!" JumpTo="0.2.2"/>
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.8" StakeName="组选和值" PlayBetId="4">
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.9" StakeName="组选三复式" PlayBetId="5">
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.a" StakeName="组选三胆拖" PlayBetId="-">
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.b" StakeName="组选三跨度" PlayBetId="-">
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.c" StakeName="组选六复式" PlayBetId="6">
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.d" StakeName="组选六胆拖" PlayBetId="-">
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.e" StakeName="组选六跨度" PlayBetId="-">
+				<Choice ChoiceKey="=" JumpTo="0.2.*"/>
+			</Stake>
+			<Stake StakeNode="0.2.*" StakeName="投注方式选择节点">
+				<Choice JumpTo="0.2.1" ChoiceKey="01"/>
+				<Choice JumpTo="0.2.2" ChoiceKey="01~!~!"/>
+				<Choice JumpTo="0.2.3" ChoiceKey="05"/>
+				<Choice JumpTo="0.2.4" ChoiceKey="08"/>
+				<Choice JumpTo="0.2.5" ChoiceKey="09"/>
+				<Choice JumpTo="0.2.6" ChoiceKey="12"/>
+				<Choice JumpTo="0.2.7" ChoiceKey="01~!"/>
+				<Choice JumpTo="0.2.8" ChoiceKey="06"/>
+				<Choice JumpTo="0.2.9" ChoiceKey="03"/>
+				<Choice JumpTo="0.2.a" ChoiceKey="10"/>
+				<Choice JumpTo="0.2.b" ChoiceKey="13"/>
+				<Choice JumpTo="0.2.c" ChoiceKey="04"/>
+				<Choice JumpTo="0.2.d" ChoiceKey="11"/>
+				<Choice JumpTo="0.2.e" ChoiceKey="14"/>
+				<Choice JumpTo="0.3.1" ChoiceKey="02"/>
+				<Choice JumpTo="0.3.2" ChoiceKey="07"/>
+			</Stake>
+		</Game>
+		<Game GameNode="0.3" GameID="00-3" GameName="排列五" EnterKey="03" DefaultStakeNode="0.3.1">
+			<Stake StakeNode="0.3.1" StakeName="单式" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.3.2"/>
+				<Choice ChoiceKey="=" JumpTo="0.3.*"/>
+			</Stake>
+			<Stake StakeNode="0.3.2" StakeName="复式" PlayBetId="1">
+				<Choice ChoiceKey="!" JumpTo="0.3.1"/>
+				<Choice ChoiceKey="=" JumpTo="0.3.*"/>
+			</Stake>
+			<Stake StakeNode="0.3.*" StakeName="投注方式选择节点">
+				<Choice JumpTo="0.3.1" ChoiceKey="02"/>
+				<Choice JumpTo="0.3.2" ChoiceKey="07"/>
+				<Choice JumpTo="0.2.1" ChoiceKey="01"/>
+				<Choice JumpTo="0.2.2" ChoiceKey="01~!~!"/>
+				<Choice JumpTo="0.2.3" ChoiceKey="05"/>
+				<Choice JumpTo="0.2.4" ChoiceKey="08"/>
+				<Choice JumpTo="0.2.5" ChoiceKey="09"/>
+				<Choice JumpTo="0.2.6" ChoiceKey="12"/>
+				<Choice JumpTo="0.2.7" ChoiceKey="01~!"/>
+				<Choice JumpTo="0.2.8" ChoiceKey="06"/>
+				<Choice JumpTo="0.2.9" ChoiceKey="03"/>
+				<Choice JumpTo="0.2.a" ChoiceKey="10"/>
+				<Choice JumpTo="0.2.b" ChoiceKey="13"/>
+				<Choice JumpTo="0.2.c" ChoiceKey="04"/>
+				<Choice JumpTo="0.2.d" ChoiceKey="11"/>
+				<Choice JumpTo="0.2.e" ChoiceKey="14"/>
+			</Stake>
+		</Game>
+		<Game GameNode="0.4" GameID="00-4" GameName="足球胜平负" EnterKey="05" DefaultStakeNode="0.4.1">
+			<Stake StakeNode="0.4.1" StakeName="单式" PlayBetId="00-4-0">
+				<Choice ChoiceKey="|" JumpTo="0.4.2"/>
+				<Choice ChoiceKey="|~=" JumpTo="0.4.3"/>
+				<Choice ChoiceKey="|~=~|" JumpTo="0.4.4"/>
+			</Stake>
+			<Stake StakeNode="0.4.2" StakeName="复式" PlayBetId="00-4-1">
+				<Choice ChoiceKey="|" JumpTo="0.4.1"/>
+				<Choice ChoiceKey="=" JumpTo="0.4.3"/>
+				<Choice ChoiceKey="=~|" JumpTo="0.4.4"/>
+			</Stake>
+			<Stake StakeNode="0.4.3" StakeName="任选九单式" PlayBetId="00-4-2">
+				<Choice ChoiceKey="|" JumpTo="0.4.4"/>
+				<Choice ChoiceKey="=" JumpTo="0.4.1"/>
+				<Choice ChoiceKey="|~|" JumpTo="0.4.2"/>
+			</Stake>
+			<Stake StakeNode="0.4.4" StakeName="任选九复式" PlayBetId="00-4-3">
+				<Choice ChoiceKey="|" JumpTo="0.4.3"/>
+				<Choice ChoiceKey="=" JumpTo="0.4.1"/>
+				<Choice ChoiceKey="=~|" JumpTo="0.4.2"/>
+			</Stake>
+		</Game>
+		<Game GameNode="0.5" GameID="00-4" GameName="4场进球" EnterKey="06" DefaultStakeNode="0.5.1">
+			<Stake StakeNode="0.5.1" StakeName="单式" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.5.2"/>
+			</Stake>
+			<Stake StakeNode="0.5.2" StakeName="复式" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.5.1"/>
+			</Stake>
+		</Game>
+		<Game GameNode="0.6" GameID="00-4" GameName="6场半全场" EnterKey="07" DefaultStakeNode="0.6.1">
+			<Stake StakeNode="0.6.1" StakeName="单式" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.6.2"/>
+			</Stake>
+			<Stake StakeNode="0.6.2" StakeName="复式" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.6.1"/>
+			</Stake>
+		</Game>
+		<Game GameNode="0.7" GameID="00-4" GameName="联网22选5" EnterKey="09" DefaultStakeNode="0.7.1">
+			<Stake StakeNode="0.7.1" StakeName="单式" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.7.2"/>
+			</Stake>
+			<Stake StakeNode="0.7.2" StakeName="复式" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.7.3"/>
+			</Stake>
+			<Stake StakeNode="0.7.3" StakeName="胆拖" PlayBetId="0" Prefix="X">
+				<Choice ChoiceKey="!" JumpTo="0.7.1"/>
+			</Stake>
+		</Game>
+	</Terminal>
+	<!--Terminal TerminalID="05988" LotteryKind="JC" ProductType="C8" BoxComParam="COM8" Paperless="true" CurrentNode="0.0.1" PrintConfirmInnerKey="~E" CashPrizeInnerKeyList="~E~E~E~E~E" Desc="注意修改去除屏保等各类参数，防止干扰按键流程">
+		<Keyboard>
+			<KeyboardCode InnerCode="1" KeyboardName="1" KeyboardValue="1"/>
+			<KeyboardCode InnerCode="2" KeyboardName="2" KeyboardValue="2"/>
+			<KeyboardCode InnerCode="3" KeyboardName="3" KeyboardValue="3"/>
+			<KeyboardCode InnerCode="4" KeyboardName="4" KeyboardValue="4"/>
+			<KeyboardCode InnerCode="5" KeyboardName="5" KeyboardValue="5"/>
+			<KeyboardCode InnerCode="6" KeyboardName="6" KeyboardValue="6"/>
+			<KeyboardCode InnerCode="7" KeyboardName="7" KeyboardValue="7"/>
+			<KeyboardCode InnerCode="8" KeyboardName="8" KeyboardValue="8"/>
+			<KeyboardCode InnerCode="9" KeyboardName="9" KeyboardValue="9"/>
+			<KeyboardCode InnerCode="0" KeyboardName="0" KeyboardValue="0"/>
+			<KeyboardCode InnerCode="!" KeyboardName="F1" KeyboardValue="F1"/>
+			<KeyboardCode InnerCode="=" KeyboardName="F2" KeyboardValue="F2"/>
+			<KeyboardCode InnerCode="B" KeyboardName="倍投" KeyboardValue="F5"/>
+			<KeyboardCode InnerCode="Q" KeyboardName="ESC" KeyboardValue="Esc"/>
+			<KeyboardCode InnerCode="E" KeyboardName="回车" KeyboardValue="Enter"/>
+			<KeyboardCode InnerCode="S" KeyboardName="上" KeyboardValue="Up"/>
+			<KeyboardCode InnerCode="X" KeyboardName="下" KeyboardValue="Down"/>
+			<KeyboardCode InnerCode="Z" KeyboardName="左" KeyboardValue="Left"/>
+			<KeyboardCode InnerCode="Y" KeyboardName="右" KeyboardValue="Right"/>
+			<KeyboardCode InnerCode="J" KeyboardName="兑奖" KeyboardValue="D"/>
+			<KeyboardCode InnerCode="W" KeyboardName="玩法选择" KeyboardValue="*"/>
+			<KeyboardCode InnerCode="+" KeyboardName="追加" KeyboardValue="+"/>
+			<KeyboardCode InnerCode="~" KeyboardName="延时" KeyboardValue="Nop"/>
+		</Keyboard>
+		<Game GameNode="0.0" GameID="200" GameName="竞彩" EnterKey="51" DefaultStakeNode="0.0.1">
+			<-- 竞彩每个玩法，投注方式，都需要再拆开，单场和串关也需要单独支撑 >
+			<Stake StakeNode="0.0.1" StakeName="竞彩足球胜平负" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.2" StakeName="竞彩足球比分" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.3" StakeName="竞彩足球总进球数" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.4" StakeName="竞彩足球半全场胜平负" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.5" StakeName="竞彩足球上下盘及单双" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.6" StakeName="竞彩足球让球胜平负" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.7" StakeName="竞彩足球大小球" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.8" StakeName="竞彩足球混合过关" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.9" StakeName="竞彩篮球让分胜负" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.a" StakeName="竞彩篮球胜负" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.b" StakeName="竞彩篮球胜分差" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.c" StakeName="竞彩篮球大小分" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.d" StakeName="竞彩篮球混合过关" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.e" StakeName="竞彩名次冠军" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.f" StakeName="竞彩名次冠亚军" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.g" StakeName="竞彩名次小组首名" PlayBetId="10-10">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.*" StakeName="投注方式选择节点">
+				<Choice JumpTo="0.0.1" ChoiceKey="51"/>
+				<Choice JumpTo="0.0.2" ChoiceKey="52"/>
+				<Choice JumpTo="0.0.3" ChoiceKey="53"/>
+				<Choice JumpTo="0.0.4" ChoiceKey="54"/>
+				<Choice JumpTo="0.0.5" ChoiceKey="55"/>
+				<Choice JumpTo="0.0.6" ChoiceKey="56"/>
+				<Choice JumpTo="0.0.7" ChoiceKey="57"/>
+				<Choice JumpTo="0.0.8" ChoiceKey="59"/>
+				<Choice JumpTo="0.0.9" ChoiceKey="61"/>
+				<Choice JumpTo="0.0.a" ChoiceKey="62"/>
+				<Choice JumpTo="0.0.b" ChoiceKey="63"/>
+				<Choice JumpTo="0.0.c" ChoiceKey="64"/>
+				<Choice JumpTo="0.0.d" ChoiceKey="69"/>
+				<Choice JumpTo="0.0.e" ChoiceKey="91"/>
+				<Choice JumpTo="0.0.f" ChoiceKey="92"/>
+				<Choice JumpTo="0.0.g" ChoiceKey="93"/>
+			</Stake>
+		</Game>
+	</Terminal>
+	<Terminal TerminalID="05888" LotteryKind="GP" ProductType="C8" Paperless="true" BoxComParam="COM5" CurrentNode="0.0.1" PrintConfirmInnerKey="~E" CashPrizeInnerKeyList="~E~E~E~E~E" Desc="注意修改去除屏保等各类参数，防止干扰按键流程">
+		<Keyboard>
+			<KeyboardCode InnerCode="1" KeyboardName="1" KeyboardValue="1"/>
+			<KeyboardCode InnerCode="2" KeyboardName="2" KeyboardValue="2"/>
+			<KeyboardCode InnerCode="3" KeyboardName="3" KeyboardValue="3"/>
+			<KeyboardCode InnerCode="4" KeyboardName="4" KeyboardValue="4"/>
+			<KeyboardCode InnerCode="5" KeyboardName="5" KeyboardValue="5"/>
+			<KeyboardCode InnerCode="6" KeyboardName="6" KeyboardValue="6"/>
+			<KeyboardCode InnerCode="7" KeyboardName="7" KeyboardValue="7"/>
+			<KeyboardCode InnerCode="8" KeyboardName="8" KeyboardValue="8"/>
+			<KeyboardCode InnerCode="9" KeyboardName="9" KeyboardValue="9"/>
+			<KeyboardCode InnerCode="0" KeyboardName="0" KeyboardValue="0"/>
+			<KeyboardCode InnerCode="!" KeyboardName="F1" KeyboardValue="F1"/>
+			<KeyboardCode InnerCode="=" KeyboardName="F2" KeyboardValue="F2"/>
+			<KeyboardCode InnerCode="B" KeyboardName="倍投" KeyboardValue="F5"/>
+			<KeyboardCode InnerCode="Q" KeyboardName="ESC" KeyboardValue="Esc"/>
+			<KeyboardCode InnerCode="E" KeyboardName="回车" KeyboardValue="Enter"/>
+			<KeyboardCode InnerCode="S" KeyboardName="上" KeyboardValue="Up"/>
+			<KeyboardCode InnerCode="X" KeyboardName="下" KeyboardValue="Down"/>
+			<KeyboardCode InnerCode="Z" KeyboardName="左" KeyboardValue="Left"/>
+			<KeyboardCode InnerCode="Y" KeyboardName="右" KeyboardValue="Right"/>
+			<KeyboardCode InnerCode="J" KeyboardName="兑奖" KeyboardValue="D"/>
+			<KeyboardCode InnerCode="W" KeyboardName="玩法选择" KeyboardValue="*"/>
+			<KeyboardCode InnerCode="+" KeyboardName="追加" KeyboardValue="+"/>
+			<KeyboardCode InnerCode="~" KeyboardName="延时" KeyboardValue="Nop"/>
+		</Keyboard>
+		<Game GameNode="0.0" GameID="T05" GameName="11选五" EnterKey="10" DefaultStakeNode="0.0.2">
+			<Stake StakeNode="0.0.1" StakeName="任选一复式" PlayBetId="2101" Desc="默认节点">
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.2" StakeName="任选二单式" PlayBetId="2200" Desc="任选二的默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.4"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.3" StakeName="任选二复式" PlayBetId="2201" Prefix="X" Desc="任选二复式和胆拖同一节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.4" StakeName="任选二胆拖" PlayBetId="2202">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.5" StakeName="任选三单式" PlayBetId="2300" Desc="默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.7"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.6" StakeName="任选三复式" PlayBetId="2301" Prefix="X">
+				<Choice ChoiceKey="!" JumpTo="0.0.5"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.7" StakeName="任选三胆拖" PlayBetId="2302">
+				<Choice ChoiceKey="!" JumpTo="0.0.5"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.8" StakeName="任选四单式" PlayBetId="2400" Desc="默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.a"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.9" StakeName="任选四复式" PlayBetId="2401" Prefix="X">
+				<Choice ChoiceKey="!" JumpTo="0.0.8"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.a" StakeName="任选四胆拖" PlayBetId="2402">
+				<Choice ChoiceKey="!" JumpTo="0.0.8"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.0" StakeName="任选五单式" PlayBetId="2500" Desc="默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.d"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.c" StakeName="任选五复式" PlayBetId="2501" Prefix="X">
+				<Choice ChoiceKey="!" JumpTo="0.0.0"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.d" StakeName="任选五胆拖" PlayBetId="2502">
+				<Choice ChoiceKey="!" JumpTo="0.0.0"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.e" StakeName="任选六单式" PlayBetId="2600" Desc="默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.g"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.f" StakeName="任选六复式" PlayBetId="2601" Prefix="X">
+				<Choice ChoiceKey="!" JumpTo="0.0.e"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.g" StakeName="任选六胆拖" PlayBetId="2602">
+				<Choice ChoiceKey="!" JumpTo="0.0.e"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.h" StakeName="任选七单式" PlayBetId="2700" Desc="默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.j"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.i" StakeName="任选七复式" PlayBetId="2701" Prefix="X">
+				<Choice ChoiceKey="!" JumpTo="0.0.h"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.j" StakeName="任选七胆拖" PlayBetId="2702">
+				<Choice ChoiceKey="!" JumpTo="0.0.h"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.k" StakeName="任选八单式" PlayBetId="2800" Desc="默认节点">
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.m" StakeName="前二组选单式" PlayBetId="2900" Desc="前二组选默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.p"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.n" StakeName="前二组选复式" PlayBetId="2901" Prefix="X">
+				<Choice ChoiceKey="!" JumpTo="0.0.q"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.p" StakeName="前二组选胆拖" PlayBetId="2902">
+				<Choice ChoiceKey="!" JumpTo="0.0.q"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.q" StakeName="前二组选和值" PlayBetId="2903">
+				<Choice ChoiceKey="!" JumpTo="0.0.r"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.r" StakeName="前二组选跨度" PlayBetId="2906">
+				<Choice ChoiceKey="!" JumpTo="0.0.m"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.s" StakeName="前二直选单式" PlayBetId="3000" Desc="进入玩法的默认节点，也是前二直选的默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.t"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.t" StakeName="前二直选复式" PlayBetId="3001">
+				<Choice ChoiceKey="!" JumpTo="0.0.u"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.u" StakeName="前二直选定位复式" PlayBetId="3007">
+				<Choice ChoiceKey="!" JumpTo="0.0.v"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.v" StakeName="前二直选和值" PlayBetId="3003">
+				<Choice ChoiceKey="!" JumpTo="0.0.w"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.w" StakeName="前二直选跨度" PlayBetId="3006">
+				<Choice ChoiceKey="!" JumpTo="0.0.t"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.x" StakeName="前三组选单式" PlayBetId="3100" Desc="前三组选的默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.z"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.y" StakeName="前三组选复式" PlayBetId="3101" Prefix="X">
+				<Choice ChoiceKey="!" JumpTo="0.0.A"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.z" StakeName="前三组选胆拖" PlayBetId="3102">
+				<Choice ChoiceKey="!" JumpTo="0.0.A"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.A" StakeName="前三组选和值" PlayBetId="3103">
+				<Choice ChoiceKey="!" JumpTo="0.0.0"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.0" StakeName="前三组选跨度" PlayBetId="3106">
+				<Choice ChoiceKey="!" JumpTo="0.0.X"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.C" StakeName="前三直选单式" PlayBetId="3200" Desc="前三直选的默认节点">
+				<Choice ChoiceKey="!" JumpTo="0.0.D"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.D" StakeName="前三直选复式" PlayBetId="3201">
+				<Choice ChoiceKey="!" JumpTo="0.0.E"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.E" StakeName="前三直选定位复式" PlayBetId="3207">
+				<Choice ChoiceKey="!" JumpTo="0.0.F"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.F" StakeName="前三直选和值" PlayBetId="3203">
+				<Choice ChoiceKey="!" JumpTo="0.0.G"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.G" StakeName="前三直选跨度" PlayBetId="3206">
+				<Choice ChoiceKey="!" JumpTo="0.0.C"/>
+				<Choice ChoiceKey="=" JumpTo="0.0.*"/>
+			</Stake>
+			<Stake StakeNode="0.0.*" StakeName="投注方式选择节点">
+				<Choice JumpTo="0.0.1" ChoiceKey="01"/>
+				<Choice JumpTo="0.0.2" ChoiceKey="02"/>
+				<Choice JumpTo="0.0.3" ChoiceKey="02~!"/>
+				<Choice JumpTo="0.0.4" ChoiceKey="02~!"/>
+				<Choice JumpTo="0.0.5" ChoiceKey="03"/>
+				<Choice JumpTo="0.0.6" ChoiceKey="03~!"/>
+				<Choice JumpTo="0.0.7" ChoiceKey="03~!"/>
+				<Choice JumpTo="0.0.8" ChoiceKey="04"/>
+				<Choice JumpTo="0.0.9" ChoiceKey="04~!"/>
+				<Choice JumpTo="0.0.a" ChoiceKey="04~!"/>
+				<Choice JumpTo="0.0.0" ChoiceKey="05"/>
+				<Choice JumpTo="0.0.c" ChoiceKey="05~!"/>
+				<Choice JumpTo="0.0.d" ChoiceKey="05~!"/>
+				<Choice JumpTo="0.0.e" ChoiceKey="06"/>
+				<Choice JumpTo="0.0.f" ChoiceKey="06~!"/>
+				<Choice JumpTo="0.0.g" ChoiceKey="06~!"/>
+				<Choice JumpTo="0.0.h" ChoiceKey="07"/>
+				<Choice JumpTo="0.0.i" ChoiceKey="07~!"/>
+				<Choice JumpTo="0.0.j" ChoiceKey="07~!"/>
+				<Choice JumpTo="0.0.k" ChoiceKey="08"/>
+				<Choice JumpTo="0.0.m" ChoiceKey="09"/>
+				<Choice JumpTo="0.0.n" ChoiceKey="09~!"/>
+				<Choice JumpTo="0.0.p" ChoiceKey="09~!"/>
+				<Choice JumpTo="0.0.q" ChoiceKey="09~!~!"/>
+				<Choice JumpTo="0.0.r" ChoiceKey="09~!~!~!"/>
+				<Choice JumpTo="0.0.s" ChoiceKey="10"/>
+				<Choice JumpTo="0.0.t" ChoiceKey="10~!"/>
+				<Choice JumpTo="0.0.u" ChoiceKey="10~!~!"/>
+				<Choice JumpTo="0.0.v" ChoiceKey="10~!~!~!"/>
+				<Choice JumpTo="0.0.w" ChoiceKey="10~!~!~!~!"/>
+				<Choice JumpTo="0.0.x" ChoiceKey="11"/>
+				<Choice JumpTo="0.0.y" ChoiceKey="11~!"/>
+				<Choice JumpTo="0.0.z" ChoiceKey="11~!"/>
+				<Choice JumpTo="0.0.A" ChoiceKey="11~!~!"/>
+				<Choice JumpTo="0.0.0" ChoiceKey="11~!~!~!"/>
+				<Choice JumpTo="0.0.C" ChoiceKey="12"/>
+				<Choice JumpTo="0.0.D" ChoiceKey="12~!"/>
+				<Choice JumpTo="0.0.E" ChoiceKey="12~!~!"/>
+				<Choice JumpTo="0.0.F" ChoiceKey="12~!~!~!"/>
+				<Choice JumpTo="0.0.G" ChoiceKey="12~!~!~!~!"/>
+			</Stake>
+		</Game>
+		<!--Game GameNode="0.0" GameID="00-5" GameName="快乐扑克3" EnterKey="08" DefaultStakeNode="0.0.5">
+			<Stake StakeNode="0.0.1" StakeName="任选一" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.0.2"/>
+			</Stake>
+			<Stake StakeNode="0.0.2" StakeName="任选二" PlayBetId="1">
+				<Choice ChoiceKey="!" JumpTo="0.0.3"/>
+			</Stake>
+			<Stake StakeNode="0.0.3" StakeName="任选三" PlayBetId="2">
+				<Choice ChoiceKey="!" JumpTo="0.0.4"/>
+			</Stake>
+			<Stake StakeNode="0.0.4" StakeName="任选四" PlayBetId="3">
+				<Choice ChoiceKey="!" JumpTo="0.0.5"/>
+			</Stake>
+			<Stake StakeNode="0.0.5" StakeName="任选五" PlayBetId="4">
+				<Choice ChoiceKey="!" JumpTo="0.0.6"/>
+			</Stake>
+			<Stake StakeNode="0.0.6" StakeName="任选六" PlayBetId="5">
+				<Choice ChoiceKey="!" JumpTo="0.0.7"/>
+			</Stake>
+			<Stake StakeNode="0.0.7" StakeName="同花" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.0.8"/>
+			</Stake>
+			<Stake StakeNode="0.0.8" StakeName="同花顺" PlayBetId="1">
+				<Choice ChoiceKey="!" JumpTo="0.0.9"/>
+			</Stake>
+			<Stake StakeNode="0.0.9" StakeName="顺子" PlayBetId="0">
+				<Choice ChoiceKey="!" JumpTo="0.0.a"/>
+			</Stake>
+			<Stake StakeNode="0.0.a" StakeName="豹子" PlayBetId="1">
+				<Choice ChoiceKey="!" JumpTo="0.0.b"/>
+			</Stake>
+			<Stake StakeNode="0.0.b" StakeName="对子" PlayBetId="1">
+				<Choice ChoiceKey="!" JumpTo="0.0.1"/>
+			</Stake>
+		</Game>	
+	</Terminal-->
+</TerminalList>

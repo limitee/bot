@@ -1,0 +1,29 @@
+//---------------------------------------------------------------------------
+
+#ifndef OrderDealerH
+#define OrderDealerH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+
+
+class CController;
+class CTerminal;
+
+class COrderDealer : TThread
+{
+	public:
+		__fastcall COrderDealer(CController *c, bool CreateSuspended);
+
+		//自动处理线程任务
+		void __fastcall Execute();
+
+		void NotifyPrint(CTerminal *terminal);
+
+	private:
+		CController *controller;
+
+		void DispatchTicket();
+
+};
+
+#endif

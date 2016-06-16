@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="GB2312"?>
+<!-- edited with XMLSpy v2011 (http://www.altova.com) by Liuxinfeng (LottChina) -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<xsd:simpleType name="PosVersionEnum">
+		<xsd:annotation>
+			<xsd:documentation>彩票系统软件版本的枚举</xsd:documentation>
+		</xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="36.48.00"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:simpleType name="MenuNodeType">
+		<xsd:annotation>
+			<xsd:documentation>定义终端机当前界面目录的所处位置节点的规则，采用n.x.x的形式，其中x字母表中的o和l与0和1很像容易看错所以弃用。数字加上大小写字母足够支持所有玩法和投注方式了。</xsd:documentation>
+		</xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:pattern value="((\d{1})\.)*(\w{1}|\*)"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:complexType name="ChoiceType">
+		<xsd:annotation>
+			<xsd:documentation>按键后跳转其他节点的选择器类型，ChoiceKey的值为系统内码按键组成的字符串</xsd:documentation>
+		</xsd:annotation>
+		<xsd:attribute name="ChoiceKey" type="xsd:string"/>
+		<xsd:attribute name="JumpTo" type="MenuNodeType"/>
+	</xsd:complexType>
+	<xsd:complexType name="StakeType">
+		<xsd:annotation>
+			<xsd:documentation>录入投注号码界面节点类型，出票完成后的自动跳转节点可能大多数Stake节点都不需要，需要时定义本属性字段即可</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="Choice" type="ChoiceType" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="StakeNode" type="MenuNodeType"/>
+		<xsd:attribute name="StakeName" type="xsd:string"/>
+		<xsd:attribute name="PlayBetId" type="xsd:string"/>
+		<xsd:attribute name="FinishedNode" type="MenuNodeType"/>
+		<xsd:attribute name="Desc" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:complexType name="GameType">
+		<xsd:annotation>
+			<xsd:documentation>游戏层级类型的定义，常规属性，进入本游戏的按键值，和一组玩法投注方式对象的列表</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="Stake" type="StakeType" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="GameNode" type="MenuNodeType"/>
+		<xsd:attribute name="GameID" type="xsd:string"/>
+		<xsd:attribute name="GameName" type="xsd:string"/>
+		<xsd:attribute name="EnterKey" type="xsd:string"/>
+		<xsd:attribute name="DefaultStakeNode" type="MenuNodeType"/>
+	</xsd:complexType>
+	<xsd:complexType name="ReportMenuType">
+		<xsd:annotation>
+			<xsd:documentation>终端机报表条目类型，显示名称，值为按键序列</xsd:documentation>
+		</xsd:annotation>
+		<xsd:attribute name="QueryID" type="xsd:string"/>
+		<xsd:attribute name="Caption" type="xsd:string"/>
+		<xsd:attribute name="InnerKeys" type="xsd:string"/>
+		<xsd:attribute name="HaveStub" type="xsd:boolean"/>
+	</xsd:complexType>
+	<xsd:complexType name="CategoryReportType">
+		<xsd:annotation>
+			<xsd:documentation>终端机报表的设置</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="ReportMenu" type="ReportMenuType" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="FinishKeys" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:complexType name="LotteryPosType">
+		<xsd:annotation>
+			<xsd:documentation>彩票销售系统，包含一组报表，能够出票的游戏对象列表，和参数设置</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="CategoryReport" type="CategoryReportType" maxOccurs="1"/>
+			<xsd:element name="Game" type="GameType" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="PosVersion" type="PosVersionEnum"/>
+		<xsd:attribute name="NeedConfirmAmount" type="xsd:int"/>
+		<xsd:attribute name="NeedPasswordAmount" type="xsd:int"/>
+		<xsd:attribute name="Desc" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:element name="LotteryPos" type="LotteryPosType"/>
+</xsd:schema>

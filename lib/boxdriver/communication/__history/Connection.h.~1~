@@ -1,0 +1,74 @@
+//---------------------------------------------------------------------------
+
+#ifndef ConnectionH
+#define ConnectionH
+//---------------------------------------------------------------------------
+#include <windows.h>
+#include "FtdiChannel.h"
+#include "Array.h"
+#include "RingBytesBuffer.h"
+#include "BoxMessage.h"
+#include "BlockingQueue.h"
+
+class Printceptor;
+
+class Connection {
+private:
+	bool isOpened;
+
+	bool isOpening;
+
+	bool isClosing;
+
+	bool isClosed;
+
+	bool isConnected;
+
+	bool deviceOpened;
+
+	FtdiChannel* deviceChannel;
+
+	long boxActiveTime;
+
+public:
+	Connection(Printceptor *p);
+
+	Printceptor* printceptor;
+
+	static const int HEART_BEAT_INTERNAL = 1000;;
+	static const int Device_Read_Timeout_Mills = 500;
+	static const int Device_Not_Inited = -99;
+	static const int Device_Not_Connected = -98;
+
+	void open(int connStringType, char* connString);
+
+	bool get_isOpened();
+
+	bool get_isConnected();
+
+	bool isDeviceOpened();
+
+	void openDevice();
+
+	int write(Array<BYTE> data);
+
+	int read(RingBytesBuffer* buffer);
+
+	void notifyDevicetException(int deviceStatus, bool fromRead);
+
+	void triggerDisConnected();
+
+	void setConnected();
+
+	void boxHasMessage();
+
+	void sendMessage(BoxMessage* message);
+
+	void close();
+
+	BlockingQueue<BoxMessage>* toBoxOther;
+
+};
+
+
+#endif

@@ -1,0 +1,246 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "Terminal.h"
+#include "TerminalCategory.h"
+#include "TerminalPanel.h"
+
+#include "Controller.h"
+
+#include "TicketCenterNodeApp.h"
+#include "FrameMonitorGroup.h"
+
+#include "MediaSupport.h"
+#include "LogSupport.h"
+#include "FileDataDealer.h"
+#include "PrinterCommPort.h"
+
+#include <System.Zip.hpp>
+#pragma package(smart_init)
+
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+CController::CController(){
+	logSupport =new CLogSupport(LOG_FILE_NAME, this);
+	mediaSupport =new CMediaSupport();
+    fileDataDealer =new CFileDataDealer(this, true);                        //创建挂起，等点击后才激活
+	printer =new CPrinterCommPort(true);
+	//各个组
+	terminalGroup =new TStringList();
+	terminalGameGroup =new TStringList();
+	terminalGameAdapterGroup =new TStringList();
+	//MAPs
+	gameMap =new TStringList();
+	gameMap->Duplicates =System::Classes::dupIgnore;						//设置不重复
+	playBetMap =new TStringList();
+	playBetMap->Duplicates =System::Classes::dupIgnore;						//设置不重复
+	//
+	errorMessageBox =new TStringList();
+	config =NULL;
+}
+
+CController::~CController(){
+	if (config !=NULL) delete config; config =NULL;
+	if (mediaSupport !=NULL) delete mediaSupport; mediaSupport =NULL;
+	if (logSupport !=NULL) delete logSupport; logSupport =NULL;
+	if (fileDataDealer !=NULL) delete fileDataDealer; fileDataDealer =NULL;
+	if (printer !=NULL) delete printer; printer =NULL;
+	delete terminalGroup;
+	delete terminalGameGroup;
+	delete terminalGameAdapterGroup;
+	delete gameMap;
+	delete playBetMap;
+    delete errorMessageBox;
+}
+
+//---------------------------------------------------------------------------
+bool CController::Init(){
+	//初始化日志
+	logSupport->SetLogSize(512);
+	logSupport->WriteLogWithTime("彩票数据中心APP启动...");
+
+	//初始化配置文件
+	if (!InitConfigXML()) return false;
+	if (!DirectoryExists(config->BinFileDir)) CreateDir(config->BinFileDir);
+	if (!DirectoryExists(config->HexFileDir)) CreateDir(config->HexFileDir);
+	logSupport->WriteLogWithTime("加载配置文件正常...");
+
+	//动态创建各个终端机对象，把配置文件扫描一遍，分别加入到TStringList的MAP中，方便后续使用查询定位
+	for (int i =0; i < config->Count; i++) {
+		_di_IXMLTerminalType terminalXML =config->operator [](i);
+		CTerminal *terminal =new CTerminal(terminalXML);
+		terminalGroup->AddObject(terminalXML->TerminalID, (TObject *)terminal);								//Terminal
+
+		for (int j= 0; j < terminalXML->LotteryPos->Count; j++) {
+			IXMLGameType *game =(_di_IXMLGameType)terminalXML->LotteryPos->Get_Game(j);
+			terminalGameGroup->AddObject(terminalXML->TerminalID +":" +game->GameID, (TObject *)game);		//Game，用ID
+			terminalGameGroup->AddObject(terminalXML->TerminalID +":" +game->GameName, (TObject *)game);	//Game，用名字
+			gameMap->Values[game->GameID] =game->GameName;			//玩法ID和名称的MAP，一些地方如兑奖等地方还是需要方便查询的，不会重复
+
+			for (int k =0; k < game->Count; k++) {
+				IXMLStakeType *stake =(_di_IXMLStakeType)game->Get_Stake(k);
+				terminalGameAdapterGroup->AddObject(terminalXML->TerminalID +":" +stake->StakeNode, (TObject *)stake);			//Stake，用Node
+				if (stake->HasAttribute("PlayBetId") && stake->PlayBetId !="") {
+					terminalGameAdapterGroup->AddObject(terminalXML->TerminalID +":" +game->GameID +":" +stake->PlayBetId, (TObject *)stake);	//Stake，用ID
+					terminalGameAdapterGroup->AddObject(terminalXML->TerminalID +":" +game->GameName+":" +stake->StakeName, (TObject *)stake);		//Stake，用名字
+					playBetMap->Values[game->GameID +":" +stake->PlayBetId] =game->GameName +stake->StakeName;			//玩法投注方式ID和名称的MAP，一些地方还是需要方便查询的，不会重复的
+				}
+			}
+		}
+		terminal->monitor->SetTerminalActive();											//轮询显示一遍，并自动激活和启动端口
+		MainForm->ComboBoxTxtTerminal->Items->Add(terminal->xmlConfig->TerminalID);		//即可加入到文本打印出票的终端列表
+	}
+	logSupport->WriteLogWithTime("终端机配置解析正常...");
+
+	if (!printer->Init(controller->config->PrinterCom , controller->config->PrinterComParam)){
+		delete printer;
+		return false;
+	}
+	logSupport->WriteLogWithTime("打印机初始化完毕...");
+
+	return true;
+}
+
+bool CController::InitConfigXML(){
+	try{
+		//先解压，再解密
+		TZipFile *zip =new TZipFile();
+		zip->ExtractZipFile("app.cfg", ".");
+		delete zip;
+        //解压的XML加密文件，用完删除
+		int cfgFile = FileOpen("app.lottchina", fmOpenRead);
+		char cfgBin[1024 *512] ={0};
+		int nRead =FileRead(cfgFile, cfgBin, sizeof(cfgBin));
+		FileClose(cfgFile);
+        DeleteFile("app.lottchina");
+		//解密并获取配置XML字符串
+		char *xml =new char[nRead]; memset(xml, 0, sizeof(xml));
+		Decrypt(cfgBin, nRead, xml);
+		AnsiString xmlString =AnsiString(xml);
+		delete xml;
+		//根据配置生成配置对象
+		TXMLDocument *doc =new TXMLDocument(MainForm);
+		doc->LoadFromXML(xmlString);
+		config =GetDataCenter(doc);
+	}catch(...){
+		return false;
+	}
+	return true;
+}
+
+//*********************************************************************************
+//加密算法，前一位与后一位做异或，最尾一位与第一位异或，结果串的第一位保存初始位的取反
+void CController::Encrypt(const char *src, int len, char *dest) {
+	int i =len;
+	for (i = 0; i < len - 1; i++) dest[i +1] = src[i] ^ src[i + 1];
+	dest[i +1] = src[i] ^ src[0];				//异或
+	dest[0] =0xFF -src[0];                      //取反
+	dest[len +1] = 0;
+}
+//解密算法，按加密方式反过来做一次就行了，应该也比较能确保安全了吧，虽然强度不高
+void CController::Decrypt(const char *src, int len, char *dest) {
+	dest[len -1] = 0;
+	dest[len - 2] = src[len -1] ^ (0xFF -src[0]);
+	for (int i = len - 3; i >= 0; i--)	dest[i] = src[i +1] ^ dest[i + 1];
+}
+
+//*********************************************************************************
+AnsiString CController::BytesToHexString(BYTE *data, int len) {
+	char *hex =new char[len *2 +1];
+	for (int i=0;i<len;i++){
+		 unsigned char ch =data[i];             //HEX
+		 sprintf(hex +i*2, "%02X ", ch);
+	}
+	hex[len *2] =0x00;
+	AnsiString hexString =AnsiString(hex);
+	delete hex;
+	return hexString;
+}
+
+//*********************************************************************************
+AnsiString CController::GetGUID(void) {
+	::CoInitialize(NULL);
+	char buf[64] = {0};
+	GUID guid;
+	if (S_OK == ::CoCreateGuid(&guid)) {
+		_snprintf(buf, sizeof(buf),
+			//"{%08X-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}", guid.Data1,		//注释掉，去掉了-连接符
+			"%08X%04X%04x%02X%02X%02X%02X%02X%02X%02X%02X",
+			guid.Data1, guid.Data2, guid.Data3,
+			guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+	}
+	::CoUninitialize();
+	return AnsiString(buf);
+}
+
+//*********************************************************************************
+//隐藏的功能，把原生的app.xml文件，转换成加密压缩的app.cfg配置文件
+void CController::TransAppConfigFile(){
+	if (!FileExists("app.xml")) return;
+	int xmlFile = FileOpen("app.xml", fmOpenRead);
+	char xml[1024 *512] ={0};
+	int nRead =FileRead(xmlFile, xml, sizeof(xml));
+	FileClose(xmlFile);
+	//加密，保存成app.lotchina中间文件
+	char *crypt =new char[nRead +1]; memset(crypt, 0, sizeof(crypt));
+	Encrypt(xml, nRead, crypt);
+	int hHexFile =FileCreate("app.lottchina");
+	FileWrite(hHexFile, crypt, nRead +1);
+	FileClose(hHexFile);
+	delete crypt;
+	//压缩成app.cfg的zip文件
+	TZipFile *zip =new TZipFile();
+	zip->Open("app.cfg", zmWrite);
+	zip->Add("app.lottchina");
+	zip->Close();
+	delete zip;
+	DeleteFile("app.lottchina");
+}
+
+//*********************************************************************************
+void CController::AddErrorMessage(AnsiString errMsg){
+	errorMessageBox->Add(GetTimeStr() +errMsg);
+}
+
+//----------------------------------------------------------------------------
+AnsiString CController::GetTimeStr(){
+	//返回格式化的时间字符串
+	SYSTEMTIME sys;
+	::GetLocalTime(&sys);    //获取当前系统时间
+	char szTime[64];	memset(szTime , 0 , 64);
+	sprintf(szTime, "%02d:%02d:%02d.%03d  ", sys.wHour, sys.wMinute, sys.wSecond, sys.wMilliseconds);
+	return AnsiString(szTime);
+}
+
+//----------------------------------------------------------------------------
+void CController::BackupDateFile(AnsiString dataFileDir){
+	//将已有票据文件迁移，7天前的文件按日期创建目录，并挪进去，只对票根文件进行操作
+	AnsiString depotFileDir =dataFileDir +"depot\\";
+	if (!DirectoryExists(depotFileDir)) CreateDir(depotFileDir);
+	AnsiString dataStr = DateTimeToStr(Now()-8);
+	dataStr	 = dataStr.SubString(0,10);
+	AnsiString dateFileDir =dataFileDir +"depot\\"+dataStr+"\\";
+	if (!DirectoryExists(dateFileDir)) CreateDir(dateFileDir);
+	WIN32_FIND_DATA wfd;
+	TSystemTime tSt;
+	TDateTime tDt,tLim;
+	AnsiString fileFileDir =dataFileDir +"ticket\\";
+	if (DirectoryExists(fileFileDir)){
+		AnsiString hexFileDir =dataFileDir +"ticket\\"+ "*.*";
+		HANDLE hFind = ::FindFirstFile(hexFileDir.c_str(), &wfd);
+		tLim = TDateTime(dataStr+" 23:59:59");
+		if(INVALID_HANDLE_VALUE != hFind){
+			do{
+				if (strcmp(wfd.cFileName, ".") !=0 && strcmp(wfd.cFileName, "..") != 0){
+					FileTimeToSystemTime(&wfd.ftLastWriteTime,&tSt);
+					tDt = SystemTimeToDateTime(tSt);
+					if (tDt <= tLim) {
+						MoveFile((fileFileDir+wfd.cFileName).c_str(), (dateFileDir+wfd.cFileName).c_str());
+					}
+				}
+			}while(::FindNextFile(hFind, &wfd));
+		}
+		::FindClose(hFind);
+	}
+}

@@ -1,0 +1,16 @@
+//---------------------------------------------------------------------------
+
+#ifndef FileDataLoaderH
+#define FileDataLoaderH
+//---------------------------------------------------------------------------
+class CController;
+
+class CFileDataLoader : TThread
+{
+
+
+
+};
+
+
+#endif

@@ -1,0 +1,211 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include <malloc.h>
+#include "PrinterCommPort.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+static int CommMsgStep =198;		//串口类对象消息号的步长，每次生成一个对象自动加1
+//---------------------------------------------------------------------------
+CPrinterCommPort::CPrinterCommPort(bool CreateSuspended) : TThread(CreateSuspended)
+{
+	CommOpen=false;
+	try{
+		//保证消息号不要重复
+		CommMsgStep++;
+		CommMsgId =WM_USER +CommMsgStep;
+		//创建非可视窗口的Windows消息函数
+		HWND=AllocateHWnd(MessageProc);
+		memset(&osW,0,sizeof(osW));
+		memset(&osR,0,sizeof(osR));
+		osR.hEvent=CreateEvent(NULL,true,FALSE,NULL);
+		osW.hEvent=CreateEvent(NULL,true,FALSE,NULL);
+	}catch(Exception& e){
+		ShowMessage(e.Message);
+		if(HWND) DeallocateHWnd(HWND);
+		return;
+	}
+}
+
+//***********************************************************************************
+//打开串口并设置有关参数
+bool CPrinterCommPort::Init(AnsiString commPort, AnsiString comParam){
+	try{
+		AnsiString comport ="\\\\.\\" +commPort;
+		hCom=CreateFile(comport.c_str(),GENERIC_READ | GENERIC_WRITE, 0, NULL,
+				OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_OVERLAPPED, NULL);
+		if(hCom ==INVALID_HANDLE_VALUE) return false;
+		//设置缓冲区
+		if (!SetupComm(hCom, BUFFSIZE, BUFFSIZE)) return false;
+		//读超时
+		GetCommTimeouts(hCom,&CommTimeOuts);
+		CommTimeOuts.ReadIntervalTimeout =MAXDWORD;
+		CommTimeOuts.ReadTotalTimeoutMultiplier =25;
+		CommTimeOuts.ReadTotalTimeoutConstant =200;
+		//写超时
+		CommTimeOuts.WriteTotalTimeoutMultiplier =500;
+		CommTimeOuts.WriteTotalTimeoutConstant =1000;
+		if (!SetCommTimeouts(hCom, &CommTimeOuts)) return false;
+		//波特率
+		GetCommState(hCom,&dcb);
+		//
+		AnsiString paramStr =StringReplace(comParam, ",", "\r\n", TReplaceFlags() << rfReplaceAll);
+		TStringList *param =new TStringList();
+		param->Text =paramStr;
+		if (param->Count <4) return false;
+		dcb.BaudRate =StrToInt(param->operator [](0));
+		dcb.ByteSize =(unsigned char)StrToInt(param->operator [](1));
+		if (param->operator [](2) =="N") {
+			dcb.Parity =NOPARITY;
+		}else{
+			dcb.Parity =EVENPARITY;		//奇偶校验
+		}
+		dcb.StopBits =(unsigned char)StrToInt(param->operator [](3));
+		delete param;
+		if (!SetCommState(hCom,&dcb)) return false;
+		if (!SetCommMask(hCom,EV_RXCHAR|EV_TXEMPTY|EV_CTS|EV_DSR|EV_RLSD|EV_RXFLAG|EV_RX80FULL|EV_ERR)) return false;
+		//PurgeComm( hCom, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR|PURGE_RXCLEAR );
+		if (!PurgeComm( hCom, PURGE_TXCLEAR|PURGE_RXCLEAR )) return false;
+		//
+		osR.Offset=0;
+		osR.OffsetHigh=0;
+		osW.Offset=0;
+		osW.OffsetHigh=0;
+		//
+		CommOpen=true;
+		this->Suspended =false;
+		return true;
+	}catch(Exception& e){
+		ShowMessage(e.Message);
+		return false;
+	}
+}
+
+//---------------------------------------------------------------------------
+bool CPrinterCommPort::Close()
+{
+	if(CommOpen){
+		CommOpen=false;
+		PurgeComm(hCom,PURGE_RXCLEAR);
+		if(CloseHandle(hCom)){
+			hCom=NULL;
+			CommOpen=false;
+			this->Suspended =true;
+			hCom=NULL;
+			return true;
+		}else
+            CommOpen=true;
+    	if(HWND)	DeallocateHWnd(HWND);
+    	if(osR.hEvent){
+	    	CloseHandle(osR.hEvent);
+		    osR.hEvent=0;
+    	}
+	    if(osW.hEvent){
+		    CloseHandle(osW.hEvent);
+    		osW.hEvent=0;
+	    }
+
+		return true;
+	}
+	return false;
+}
+
+//---------------------------------------------------------------------------
+int CPrinterCommPort::GetReceivedCount()
+{
+	unsigned long errorcode;
+	if(CommOpen){
+		ClearCommError(hCom,&errorcode,&CommStat);
+		return(CommStat.cbInQue);
+	}
+	return 0;
+}
+//---------------------------------------------------------------------------
+int CPrinterCommPort::ReadComm(void* ReadBuffer,int Length)
+{
+	unsigned long readed=0,state=0;
+	if(CommOpen&&ReadBuffer&&Length){
+        if(!ReadFile(hCom,ReadBuffer,Length,&readed,&osR)){
+            if(GetLastError()==ERROR_IO_PENDING){
+                state=WaitForSingleObject(osR.hEvent, 2000);
+                if(state==WAIT_TIMEOUT){
+                    PurgeComm(hCom,PURGE_RXCLEAR);
+                }
+                GetOverlappedResult(hCom,&osR,&readed,false);
+            }
+        }
+	}
+	return readed;
+}
+//---------------------------------------------------------------------------
+bool CPrinterCommPort::FlushCommBuffer(bool TxBuffer,bool RxBuffer)
+{
+	unsigned long mask=0;
+	if(CommOpen){
+		if(TxBuffer) mask|=PURGE_TXCLEAR;
+		if(RxBuffer) mask|=PURGE_RXCLEAR;
+		if(mask){
+			if(PurgeComm(hCom,mask)) return true;
+		}
+	}
+	return false;
+}
+//---------------------------------------------------------------------------
+void __fastcall CPrinterCommPort::MessageProc(TMessage &Message)
+{
+	if(Message.Msg == CommMsgId){
+		if(Message.WParam&EV_RXCHAR){
+			if(fCommReceived) fCommReceived(this);  //如处理函数已经赋值，则调用处理
+		}
+	}else (DefWindowProc(HWND, Message.Msg, Message.WParam, Message.LParam));
+}
+//---------------------------------------------------------------------------
+int CPrinterCommPort::SendData(void* SendData,int Length,bool Wait)
+{
+	unsigned long  sended=0,state=0;
+	if(CommOpen&&SendData&&Length){
+		if(!WriteFile(hCom,SendData,Length,&sended,&osW)&&Wait){
+			if(GetLastError()==ERROR_IO_PENDING){
+				state=WaitForSingleObject(osW.hEvent, 2000);
+				if(state==WAIT_TIMEOUT){//超时
+					PurgeComm(hCom,PURGE_TXCLEAR);
+				}
+				else{
+					GetOverlappedResult(hCom,&osW,&sended,false);
+					osW.Offset+=sended;
+				}
+			}
+		}
+	}
+	return sended;
+}
+
+//---------------------------------------------------------------------------
+int CPrinterCommPort::SendData(void* SendData,int Length)
+{
+	return this->SendData(SendData,Length,false);
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CPrinterCommPort::Execute()
+{
+	unsigned long EvtMask =0, ErrorCode =0;
+	while(!Terminated){
+		if(hCom&&CommOpen){
+			if(WaitCommEvent(hCom,&EvtMask,NULL)){
+				if(EvtMask&(EV_RXCHAR|EV_TXEMPTY)){
+					if(HWND) PostMessage(HWND, CommMsgId, EvtMask, 0);
+				}
+			}else{
+				if((ErrorCode=GetLastError())!=ERROR_IO_PENDING){
+					//ShowMessage(ErrorCode);
+				}
+			}
+		}
+		Sleep(1);
+	}
+	this->Close();
+}
+
+

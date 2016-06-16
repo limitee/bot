@@ -1,0 +1,43 @@
+//---------------------------------------------------------------------------
+
+#ifndef FrameMonitorGroupH
+#define FrameMonitorGroupH
+//---------------------------------------------------------------------------
+#include <System.Classes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.StdCtrls.hpp>
+#include <Vcl.Forms.hpp>
+#include <Vcl.ExtCtrls.hpp>
+#include <Vcl.ImgList.hpp>
+#include <System.ImageList.hpp>
+
+class CTerminal;
+
+//---------------------------------------------------------------------------
+class TFrameMonitor : public TFrame
+{
+__published:	// IDE-managed Components
+	TCategoryPanelGroup *CategoryPanelGroup;
+	TImageList *ImageListTerminal;
+	TTimer *TimerFreshErrMsg;
+	TTimer *TimerMonitorRefresh;
+
+	void __fastcall FrameMouseWheel(TObject *Sender, TShiftState Shift, int WheelDelta,
+		  TPoint &MousePos, bool &Handled);
+	void __fastcall TimerFreshErrMsgTimer(TObject *Sender);
+	void __fastcall FrameResize(TObject *Sender);
+	void __fastcall TimerMonitorRefreshTimer(TObject *Sender);
+
+private:	// User declarations
+	int echoErrIndex;		//错误提示的轮询ID，对应有错误信息的终端的下标
+
+public:		// User declarations
+	__fastcall TFrameMonitor(TComponent* Owner);
+
+	CTerminal *currentTerminal;
+	TPanel *PanelCurrentTerminal;
+};
+//---------------------------------------------------------------------------
+extern PACKAGE TFrameMonitor *FrameMonitor;
+//---------------------------------------------------------------------------
+#endif

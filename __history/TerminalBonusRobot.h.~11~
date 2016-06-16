@@ -1,0 +1,36 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalBonusRobotH
+#define TerminalBonusRobotH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+#include "DefineStruct.h"
+
+class CTerminal;
+
+class CTerminalBonusRobot : TThread
+{
+	public:
+		__fastcall CTerminalBonusRobot(CTerminal *term, bool CreateSuspended);
+
+		//自动处理线程任务
+		void __fastcall Execute();
+
+
+		void SendTicketKeys();		//出票按键
+		void HandleStub();			//处理票根
+
+		//供外部调用的
+		bool SetCurrentTicket(Ticket tick); 			//唤醒，设置好了一张票
+		void NotifyStub(int money, AnsiString stub);    //唤醒，在外部验证完把金额带进来
+
+		Bonus currentBonus;
+
+	private:
+		CTerminal *terminal;
+
+		int verifyMoney;
+		AnsiString stubString;
+};
+
+#endif
+

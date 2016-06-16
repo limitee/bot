@@ -1,0 +1,23 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalDaemonH
+#define TerminalDaemonH
+//---------------------------------------------------------------------------
+#include <System.Classes.hpp>
+//---------------------------------------------------------------------------
+class CTerminal;
+
+class TerminalDaemon : public TThread
+{
+private:
+	CTerminal *terminal;
+
+	int intervalReconnectSecond;		//网络重连的时间间隔
+
+protected:
+	void __fastcall Execute();
+
+public:
+	__fastcall TerminalDaemon(CTerminal *term, bool CreateSuspended);
+};
+//---------------------------------------------------------------------------
+#endif

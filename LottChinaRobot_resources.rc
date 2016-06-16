@@ -1,0 +1,5 @@
+bmpload BITMAP "res\\cddrive.bmp"
+mcp8logo Icon "res\\logo.ico"
+bmppause Bitmap "res\\pause.bmp"
+bmpprint Bitmap "res\\printer.bmp"
+bmpstart Bitmap "res\\start.bmp"

@@ -1,0 +1,28 @@
+false
+
+http://utilmind/d/DXAutoUpdate.inf
+
+umSelfUpgrade
+first release
+
+http://www.appcontrols.com/download/exe/AutoUpgraderPro.inf
+
+mfuAlwaysDownload
+
+atPreconfig
+127.0.0.1;
+8080
+
+/afterupgrade
+È«²¿ true
+tpNormal
+
+4096
+
+byNumber
+
+true
+1
+true
+wlAuto
+true

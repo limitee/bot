@@ -1,0 +1,33 @@
+//---------------------------------------------------------------------------
+
+#pragma hdrstop
+
+#include "FileDataLoader.h"
+#include "Controller.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+//---------------------------------------------------------------------------
+__fastcall CFileDataLoader::CFileDataLoader(CController *c, bool CreateSuspended): TThread(CreateSuspended)
+{
+	controller =c;
+}
+
+void __fastcall CTerminalBonusRobot::Execute()
+{
+	while (! Terminated){
+		//正式的处理一张票
+		try{
+				CashPrize();
+		}catch(...){
+//			ShowMessage("处理票过程中出现异常！已自动暂停处理，请谨慎操作，注意数据完整性。");
+			terminal->panel->BitBtnPrint->Caption ="启动(&S)";
+		}
+
+		SuspendTimestamp =-1;						//每次处理完一张不管正常不正常，处理票接数据的时间戳都设置为-1，避免票根数据被清空或超界
+		terminal->box->stubDataLength =0;                //同时也清理打印缓冲区
+		memset(terminal->box->stubBuffer, 0, sizeof(terminal->box->stubBuffer));
+
+		Sleep(50);
+	}
+}

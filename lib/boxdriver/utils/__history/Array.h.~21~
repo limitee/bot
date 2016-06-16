@@ -1,0 +1,209 @@
+//---------------------------------------------------------------------------
+#ifndef ArrayH
+#define ArrayH
+
+#pragma once
+
+template<typename T>
+class Array
+{
+private:
+    T *m_Data;  // 存放数组的动态内存指针
+    int m_Size;      // 数组的元素个数
+    int m_Max;       // 预留给动态数组的内存大小
+private:
+    void Init()     // 初始化
+	{
+		m_Size = 0;   // 默认情况下数组不包含元素
+		m_Max = 1;
+		m_Data = NULL;
+	}
+
+    void Free()     // 释放动态内存
+	{
+		delete [] m_Data;
+	}
+
+    inline bool InvalidateIndex(int nIndex)  // 判断下标的合法性
+	{
+		if(nIndex>=0 && nIndex<m_Size)
+			return false;
+		else
+			return true;
+	}
+
+public:
+    Array()        // 默认构造函数
+	{
+		Init();
+	}
+
+    Array(int nSize, T dValue)  // 构造函数，设置数组大小，默认值为dValue
+	{
+		if(nSize == 0)
+			Init();
+		else
+		{
+			m_Size = nSize;
+			m_Max = nSize*2;
+			m_Data = new T[m_Max];
+			for(int i=0; i<nSize; ++i)
+				m_Data[i]=dValue;
+		}
+	}
+
+    Array(const Array& arr)  // 拷贝构造函数
+	{
+		m_Size = arr.m_Size;  /*复制常规成员*/
+		m_Max = m_Size ?m_Size *3 :1;
+		m_Data = new T[m_Max];   /*复制指针指向的内容*/
+		//memset(m_Data, 0, m_Max*sizeof(T));
+		memcpy(m_Data, arr.m_Data, m_Size*sizeof(T));
+	}
+
+    Array& operator=(const Array& arr)  // 拷贝赋值运算符
+	{
+		if(this == &arr)  /*自赋值*/
+        return this;
+		m_Size = arr.m_Size;
+		m_Max = arr.m_Max;
+		/* 先将右侧对象拷贝到临时对象中，然后再销毁左侧对象*/
+		T *m_Temp = new T[m_Max];
+		memcpy(m_Temp, arr.m_Data, m_Size*sizeof(T));
+		delete [] m_Data;
+		m_Data = m_Temp; 
+		return *this;
+	}
+
+    ~Array()       // 析构函数
+	{
+		Free();
+	}
+
+    int GetSize()   // 获取数组的大小（元素个数）
+	{
+		return m_Size;
+	}
+
+	T* GetPt()   //获取首地址
+	{
+		return m_Data;
+	}
+
+    void SetSize(int nSize)  // 重新设置数组的大小
+	{
+		if(nSize < m_Size)   /*截断*/
+		{
+			for(int i=nSize; i<m_Size; ++i)
+				m_Data[i] = 0;
+		}
+		if(m_Size<=nSize && nSize<=m_Max)  /*新增元素置0*/
+		{
+			for(int i=m_Size; i<nSize; ++i)
+				m_Data[i] = 0;
+		}
+		if(nSize > m_Max)   /*需要重新分配空间*/
+		{
+			m_Max = nSize*2;
+			T *temp = new T[m_Max];
+			memcpy(temp, m_Data, m_Size*sizeof(T));
+			for(int i=m_Size; i<nSize; ++i)
+				temp[i] = 0;
+			delete [] m_Data;
+			m_Data = temp;
+		}
+		m_Size = nSize; /*设置数组大小*/
+	}
+
+    T GetAt(int nIndex)  // 获取指定位置元素
+	{
+		if(InvalidateIndex(nIndex))
+		{
+			return 0;
+		}
+		return m_Data[nIndex];
+	}
+
+    void SetAt(int nIndex,T dValue) // 重置指定元素的值
+	{
+		if(InvalidateIndex(nIndex))
+		{
+			return;
+		}
+		else
+		{
+			m_Data[nIndex] = dValue;
+		}
+	}
+
+    void PushBack(T dValue)  // 追加一个新元素到数组末尾
+	{
+		if(m_Size < m_Max)
+		{
+			m_Data[m_Size] = dValue;
+		}
+		else 
+		{
+			m_Max = m_Max*2;
+			T* temp = new T[m_Max];
+			memcpy(temp, m_Data, m_Size*sizeof(T));
+			delete [] m_Data;
+			m_Data = temp;
+			m_Data[m_Size] = dValue;
+		}
+		++m_Size;  /*数组大小加1*/
+	}
+
+    void DeleteAt(int nIndex)     // 删除指定位置地元素
+	{
+		if(InvalidateIndex(nIndex))
+		{
+			return;
+		}
+		else
+		{   
+			for(int i=nIndex; i<m_Size; ++i)
+				m_Data[i] = m_Data[i+1];
+			m_Data[m_Size-1] = 0;
+			--m_Size;
+		}
+	}
+
+    void InsertAt(int nIndex, T dValue)  // 插入一个新的元素到数组中
+	{
+		if(nIndex<0 || nIndex>m_Size)
+		{
+			return;
+		}
+ 
+		if(m_Size < m_Max)  /* 未满，插入 */
+		{
+			for(int i=m_Size-1; i>=nIndex; --i)
+				m_Data[i+1] = m_Data[i];
+			m_Data[nIndex] = dValue;
+		}
+		else               /* 重新分配空间 */
+		{
+			m_Max = m_Max*2;
+			T* temp = new T[m_Max];
+			memcpy(temp, m_Data, m_Size*sizeof(T));
+			delete [] m_Data;
+			m_Data = temp;
+			for(int i=m_Size-1; i>=nIndex; --i)
+				m_Data[i+1] = m_Data[i];
+			m_Data[nIndex] = dValue;
+		}
+		++m_Size;  /* 数组大小加1 */
+	}
+
+    T operator[](int nIndex) const      // 重载下标运算符[]
+	{
+		if(nIndex<0 || nIndex>=m_Size)
+		{
+			return 0;
+		}
+		return m_Data[nIndex];
+	}
+};
+
+#endif

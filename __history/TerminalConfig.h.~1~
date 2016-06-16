@@ -1,0 +1,448 @@
+
+// ************************************************************************** //
+//                                                                          
+//                             XML Data Binding                             
+//                                                                          
+//         Generated on: 2016-04-17 16:23:11                                
+//       Generated from: D:\LottChina\TicketCenterNode\TerminalConfig.xsd   
+//   Settings stored in: D:\LottChina\TicketCenterNode\TerminalConfig.xdb   
+//                                                                          
+// ************************************************************************** //
+
+#ifndef   TerminalConfigH
+#define   TerminalConfigH
+
+#include <System.hpp>
+#include <Xml.Xmldom.hpp>
+#include <Xml.XMLIntf.hpp>
+#include <Xml.XMLDoc.hpp>
+#include <XMLNodeImp.h>
+
+
+// Forward Decls 
+
+__interface IXMLTerminalListType;
+typedef System::DelphiInterface<IXMLTerminalListType> _di_IXMLTerminalListType;
+__interface IXMLTerminalType;
+typedef System::DelphiInterface<IXMLTerminalType> _di_IXMLTerminalType;
+__interface IXMLKeyboardType;
+typedef System::DelphiInterface<IXMLKeyboardType> _di_IXMLKeyboardType;
+__interface IXMLKeyboardCodeType;
+typedef System::DelphiInterface<IXMLKeyboardCodeType> _di_IXMLKeyboardCodeType;
+__interface IXMLGameType;
+typedef System::DelphiInterface<IXMLGameType> _di_IXMLGameType;
+__interface IXMLGameTypeList;
+typedef System::DelphiInterface<IXMLGameTypeList> _di_IXMLGameTypeList;
+__interface IXMLStakeType;
+typedef System::DelphiInterface<IXMLStakeType> _di_IXMLStakeType;
+__interface IXMLChoiceType;
+typedef System::DelphiInterface<IXMLChoiceType> _di_IXMLChoiceType;
+
+// IXMLTerminalListType 
+
+__interface INTERFACE_UUID("{61620503-B713-4760-8C04-4967A28A3B69}") IXMLTerminalListType : public Xml::Xmlintf::IXMLNodeCollection
+{
+public:
+public:
+  // Property Accessors 
+  virtual System::UnicodeString __fastcall Get_ServerHost() = 0;
+  virtual int __fastcall Get_ServerPort() = 0;
+  virtual System::UnicodeString __fastcall Get_ConnectionKey() = 0;
+  virtual System::UnicodeString __fastcall Get_BinFileDir() = 0;
+  virtual System::UnicodeString __fastcall Get_HexFileDir() = 0;
+  virtual System::UnicodeString __fastcall Get_PrinterCom() = 0;
+  virtual System::UnicodeString __fastcall Get_PrinterComParam() = 0;
+  virtual System::UnicodeString __fastcall Get_Desc() = 0;
+  virtual _di_IXMLTerminalType __fastcall Get_Terminal(int Index) = 0;
+  virtual void __fastcall Set_ServerHost(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_ServerPort(int Value) = 0;
+  virtual void __fastcall Set_ConnectionKey(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_BinFileDir(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_HexFileDir(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_PrinterCom(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_PrinterComParam(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_Desc(System::UnicodeString Value) = 0;
+  // Methods & Properties 
+  virtual _di_IXMLTerminalType __fastcall Add() = 0;
+  virtual _di_IXMLTerminalType __fastcall Insert(const int Index) = 0;
+  __property System::UnicodeString ServerHost = { read=Get_ServerHost, write=Set_ServerHost };
+  __property int ServerPort = { read=Get_ServerPort, write=Set_ServerPort };
+  __property System::UnicodeString ConnectionKey = { read=Get_ConnectionKey, write=Set_ConnectionKey };
+  __property System::UnicodeString BinFileDir = { read=Get_BinFileDir, write=Set_BinFileDir };
+  __property System::UnicodeString HexFileDir = { read=Get_HexFileDir, write=Set_HexFileDir };
+  __property System::UnicodeString PrinterCom = { read=Get_PrinterCom, write=Set_PrinterCom };
+  __property System::UnicodeString PrinterComParam = { read=Get_PrinterComParam, write=Set_PrinterComParam };
+  __property System::UnicodeString Desc = { read=Get_Desc, write=Set_Desc };
+  __property _di_IXMLTerminalType Terminal[int Index] = { read=Get_Terminal };/* default */
+};
+
+// IXMLTerminalType 
+
+__interface INTERFACE_UUID("{A1E91D3D-8CD0-4A64-911B-16E545E03143}") IXMLTerminalType : public Xml::Xmlintf::IXMLNode
+{
+public:
+  // Property Accessors 
+  virtual System::UnicodeString __fastcall Get_TerminalID() = 0;
+  virtual System::UnicodeString __fastcall Get_LotteryKind() = 0;
+  virtual System::UnicodeString __fastcall Get_ProductType() = 0;
+  virtual System::UnicodeString __fastcall Get_BoxComParam() = 0;
+  virtual bool __fastcall Get_AutoReconnect() = 0;
+  virtual bool __fastcall Get_Paperless() = 0;
+  virtual System::UnicodeString __fastcall Get_PrintConfirmInnerKey() = 0;
+  virtual System::UnicodeString __fastcall Get_BobusPrefixInnerKey() = 0;
+  virtual System::UnicodeString __fastcall Get_BobusPostfixInnerKey() = 0;
+  virtual System::UnicodeString __fastcall Get_CurrentNode() = 0;
+  virtual int __fastcall Get_NeedConfirmAmount() = 0;
+  virtual int __fastcall Get_NeedPasswordAmount() = 0;
+  virtual System::UnicodeString __fastcall Get_SalesPassword() = 0;
+  virtual System::UnicodeString __fastcall Get_Desc() = 0;
+  virtual _di_IXMLKeyboardType __fastcall Get_Keyboard() = 0;
+  virtual _di_IXMLGameTypeList __fastcall Get_Game() = 0;
+  virtual void __fastcall Set_TerminalID(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_LotteryKind(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_ProductType(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_BoxComParam(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_AutoReconnect(bool Value) = 0;
+  virtual void __fastcall Set_Paperless(bool Value) = 0;
+  virtual void __fastcall Set_PrintConfirmInnerKey(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_BobusPrefixInnerKey(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_BobusPostfixInnerKey(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_CurrentNode(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_NeedConfirmAmount(int Value) = 0;
+  virtual void __fastcall Set_NeedPasswordAmount(int Value) = 0;
+  virtual void __fastcall Set_SalesPassword(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_Desc(System::UnicodeString Value) = 0;
+  // Methods & Properties 
+  __property System::UnicodeString TerminalID = { read=Get_TerminalID, write=Set_TerminalID };
+  __property System::UnicodeString LotteryKind = { read=Get_LotteryKind, write=Set_LotteryKind };
+  __property System::UnicodeString ProductType = { read=Get_ProductType, write=Set_ProductType };
+  __property System::UnicodeString BoxComParam = { read=Get_BoxComParam, write=Set_BoxComParam };
+  __property bool AutoReconnect = { read=Get_AutoReconnect, write=Set_AutoReconnect };
+  __property bool Paperless = { read=Get_Paperless, write=Set_Paperless };
+  __property System::UnicodeString PrintConfirmInnerKey = { read=Get_PrintConfirmInnerKey, write=Set_PrintConfirmInnerKey };
+  __property System::UnicodeString BobusPrefixInnerKey = { read=Get_BobusPrefixInnerKey, write=Set_BobusPrefixInnerKey };
+  __property System::UnicodeString BobusPostfixInnerKey = { read=Get_BobusPostfixInnerKey, write=Set_BobusPostfixInnerKey };
+  __property System::UnicodeString CurrentNode = { read=Get_CurrentNode, write=Set_CurrentNode };
+  __property int NeedConfirmAmount = { read=Get_NeedConfirmAmount, write=Set_NeedConfirmAmount };
+  __property int NeedPasswordAmount = { read=Get_NeedPasswordAmount, write=Set_NeedPasswordAmount };
+  __property System::UnicodeString SalesPassword = { read=Get_SalesPassword, write=Set_SalesPassword };
+  __property System::UnicodeString Desc = { read=Get_Desc, write=Set_Desc };
+  __property _di_IXMLKeyboardType Keyboard = { read=Get_Keyboard };
+  __property _di_IXMLGameTypeList Game = { read=Get_Game };
+};
+
+// IXMLKeyboardType 
+
+__interface INTERFACE_UUID("{3BF14C93-C166-4090-B612-81826869D6E5}") IXMLKeyboardType : public Xml::Xmlintf::IXMLNodeCollection
+{
+public:
+public:
+  // Property Accessors 
+  virtual _di_IXMLKeyboardCodeType __fastcall Get_KeyboardCode(int Index) = 0;
+  // Methods & Properties 
+  virtual _di_IXMLKeyboardCodeType __fastcall Add() = 0;
+  virtual _di_IXMLKeyboardCodeType __fastcall Insert(const int Index) = 0;
+  __property _di_IXMLKeyboardCodeType KeyboardCode[int Index] = { read=Get_KeyboardCode };/* default */
+};
+
+// IXMLKeyboardCodeType 
+
+__interface INTERFACE_UUID("{E768C8AE-AB2E-4D68-B76F-C771540B5CD3}") IXMLKeyboardCodeType : public Xml::Xmlintf::IXMLNode
+{
+public:
+  // Property Accessors 
+  virtual System::UnicodeString __fastcall Get_InnerCode() = 0;
+  virtual System::UnicodeString __fastcall Get_KeyboardName() = 0;
+  virtual System::UnicodeString __fastcall Get_KeyboardValue() = 0;
+  virtual void __fastcall Set_InnerCode(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_KeyboardName(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_KeyboardValue(System::UnicodeString Value) = 0;
+  // Methods & Properties 
+  __property System::UnicodeString InnerCode = { read=Get_InnerCode, write=Set_InnerCode };
+  __property System::UnicodeString KeyboardName = { read=Get_KeyboardName, write=Set_KeyboardName };
+  __property System::UnicodeString KeyboardValue = { read=Get_KeyboardValue, write=Set_KeyboardValue };
+};
+
+// IXMLGameType 
+
+__interface INTERFACE_UUID("{8BFD6CB5-56AF-416A-B95F-36FFDAF55D4A}") IXMLGameType : public Xml::Xmlintf::IXMLNodeCollection
+{
+public:
+public:
+  // Property Accessors 
+  virtual System::UnicodeString __fastcall Get_GameNode() = 0;
+  virtual System::UnicodeString __fastcall Get_GameID() = 0;
+  virtual System::UnicodeString __fastcall Get_GameName() = 0;
+  virtual System::UnicodeString __fastcall Get_EnterKey() = 0;
+  virtual System::UnicodeString __fastcall Get_DefaultStakeNode() = 0;
+  virtual _di_IXMLStakeType __fastcall Get_Stake(int Index) = 0;
+  virtual void __fastcall Set_GameNode(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_GameID(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_GameName(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_EnterKey(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_DefaultStakeNode(System::UnicodeString Value) = 0;
+  // Methods & Properties 
+  virtual _di_IXMLStakeType __fastcall Add() = 0;
+  virtual _di_IXMLStakeType __fastcall Insert(const int Index) = 0;
+  __property System::UnicodeString GameNode = { read=Get_GameNode, write=Set_GameNode };
+  __property System::UnicodeString GameID = { read=Get_GameID, write=Set_GameID };
+  __property System::UnicodeString GameName = { read=Get_GameName, write=Set_GameName };
+  __property System::UnicodeString EnterKey = { read=Get_EnterKey, write=Set_EnterKey };
+  __property System::UnicodeString DefaultStakeNode = { read=Get_DefaultStakeNode, write=Set_DefaultStakeNode };
+  __property _di_IXMLStakeType Stake[int Index] = { read=Get_Stake };/* default */
+};
+
+// IXMLGameTypeList 
+
+__interface INTERFACE_UUID("{79E1460B-98E0-4865-BFE5-BAC0A915348E}") IXMLGameTypeList : public Xml::Xmlintf::IXMLNodeCollection
+{
+public:
+  // Methods & Properties 
+  virtual _di_IXMLGameType __fastcall Add() = 0;
+  virtual _di_IXMLGameType __fastcall Insert(const int Index) = 0;
+
+  virtual _di_IXMLGameType __fastcall Get_Item(int Index) = 0;
+  __property _di_IXMLGameType Items[int Index] = { read=Get_Item /* default */ };
+};
+
+// IXMLStakeType 
+
+__interface INTERFACE_UUID("{3A04F27B-162D-4B5A-BB4E-42841EE24EFC}") IXMLStakeType : public Xml::Xmlintf::IXMLNodeCollection
+{
+public:
+public:
+  // Property Accessors 
+  virtual System::UnicodeString __fastcall Get_StakeNode() = 0;
+  virtual System::UnicodeString __fastcall Get_StakeName() = 0;
+  virtual System::UnicodeString __fastcall Get_PlayBetId() = 0;
+  virtual System::UnicodeString __fastcall Get_FinishedNode() = 0;
+  virtual System::UnicodeString __fastcall Get_Desc() = 0;
+  virtual _di_IXMLChoiceType __fastcall Get_Choice(int Index) = 0;
+  virtual void __fastcall Set_StakeNode(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_StakeName(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_PlayBetId(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_FinishedNode(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_Desc(System::UnicodeString Value) = 0;
+  // Methods & Properties 
+  virtual _di_IXMLChoiceType __fastcall Add() = 0;
+  virtual _di_IXMLChoiceType __fastcall Insert(const int Index) = 0;
+  __property System::UnicodeString StakeNode = { read=Get_StakeNode, write=Set_StakeNode };
+  __property System::UnicodeString StakeName = { read=Get_StakeName, write=Set_StakeName };
+  __property System::UnicodeString PlayBetId = { read=Get_PlayBetId, write=Set_PlayBetId };
+  __property System::UnicodeString FinishedNode = { read=Get_FinishedNode, write=Set_FinishedNode };
+  __property System::UnicodeString Desc = { read=Get_Desc, write=Set_Desc };
+  __property _di_IXMLChoiceType Choice[int Index] = { read=Get_Choice };/* default */
+};
+
+// IXMLChoiceType 
+
+__interface INTERFACE_UUID("{C7CC834B-0BB4-4392-8FA6-10F8359FAAD2}") IXMLChoiceType : public Xml::Xmlintf::IXMLNode
+{
+public:
+  // Property Accessors 
+  virtual System::UnicodeString __fastcall Get_ChoiceKey() = 0;
+  virtual System::UnicodeString __fastcall Get_JumpTo() = 0;
+  virtual void __fastcall Set_ChoiceKey(System::UnicodeString Value) = 0;
+  virtual void __fastcall Set_JumpTo(System::UnicodeString Value) = 0;
+  // Methods & Properties 
+  __property System::UnicodeString ChoiceKey = { read=Get_ChoiceKey, write=Set_ChoiceKey };
+  __property System::UnicodeString JumpTo = { read=Get_JumpTo, write=Set_JumpTo };
+};
+
+// Forward Decls 
+
+class TXMLTerminalListType;
+class TXMLTerminalType;
+class TXMLKeyboardType;
+class TXMLKeyboardCodeType;
+class TXMLGameType;
+class TXMLGameTypeList;
+class TXMLStakeType;
+class TXMLChoiceType;
+
+// TXMLTerminalListType 
+
+class TXMLTerminalListType : public Xml::Xmldoc::TXMLNodeCollection, public IXMLTerminalListType
+{
+  __IXMLNODECOLLECTION_IMPL__
+protected:
+  // IXMLTerminalListType 
+  virtual System::UnicodeString __fastcall Get_ServerHost();
+  virtual int __fastcall Get_ServerPort();
+  virtual System::UnicodeString __fastcall Get_ConnectionKey();
+  virtual System::UnicodeString __fastcall Get_BinFileDir();
+  virtual System::UnicodeString __fastcall Get_HexFileDir();
+  virtual System::UnicodeString __fastcall Get_PrinterCom();
+  virtual System::UnicodeString __fastcall Get_PrinterComParam();
+  virtual System::UnicodeString __fastcall Get_Desc();
+  virtual _di_IXMLTerminalType __fastcall Get_Terminal(int Index);
+  virtual void __fastcall Set_ServerHost(System::UnicodeString Value);
+  virtual void __fastcall Set_ServerPort(int Value);
+  virtual void __fastcall Set_ConnectionKey(System::UnicodeString Value);
+  virtual void __fastcall Set_BinFileDir(System::UnicodeString Value);
+  virtual void __fastcall Set_HexFileDir(System::UnicodeString Value);
+  virtual void __fastcall Set_PrinterCom(System::UnicodeString Value);
+  virtual void __fastcall Set_PrinterComParam(System::UnicodeString Value);
+  virtual void __fastcall Set_Desc(System::UnicodeString Value);
+  virtual _di_IXMLTerminalType __fastcall Add();
+  virtual _di_IXMLTerminalType __fastcall Insert(const int Index);
+public:
+  virtual void __fastcall AfterConstruction(void);
+};
+
+// TXMLTerminalType 
+
+class TXMLTerminalType : public Xml::Xmldoc::TXMLNode, public IXMLTerminalType
+{
+  __IXMLNODE_IMPL__
+private:
+  _di_IXMLGameTypeList FGame;
+protected:
+  // IXMLTerminalType 
+  virtual System::UnicodeString __fastcall Get_TerminalID();
+  virtual System::UnicodeString __fastcall Get_LotteryKind();
+  virtual System::UnicodeString __fastcall Get_ProductType();
+  virtual System::UnicodeString __fastcall Get_BoxComParam();
+  virtual bool __fastcall Get_AutoReconnect();
+  virtual bool __fastcall Get_Paperless();
+  virtual System::UnicodeString __fastcall Get_PrintConfirmInnerKey();
+  virtual System::UnicodeString __fastcall Get_BobusPrefixInnerKey();
+  virtual System::UnicodeString __fastcall Get_BobusPostfixInnerKey();
+  virtual System::UnicodeString __fastcall Get_CurrentNode();
+  virtual int __fastcall Get_NeedConfirmAmount();
+  virtual int __fastcall Get_NeedPasswordAmount();
+  virtual System::UnicodeString __fastcall Get_SalesPassword();
+  virtual System::UnicodeString __fastcall Get_Desc();
+  virtual _di_IXMLKeyboardType __fastcall Get_Keyboard();
+  virtual _di_IXMLGameTypeList __fastcall Get_Game();
+  virtual void __fastcall Set_TerminalID(System::UnicodeString Value);
+  virtual void __fastcall Set_LotteryKind(System::UnicodeString Value);
+  virtual void __fastcall Set_ProductType(System::UnicodeString Value);
+  virtual void __fastcall Set_BoxComParam(System::UnicodeString Value);
+  virtual void __fastcall Set_AutoReconnect(bool Value);
+  virtual void __fastcall Set_Paperless(bool Value);
+  virtual void __fastcall Set_PrintConfirmInnerKey(System::UnicodeString Value);
+  virtual void __fastcall Set_BobusPrefixInnerKey(System::UnicodeString Value);
+  virtual void __fastcall Set_BobusPostfixInnerKey(System::UnicodeString Value);
+  virtual void __fastcall Set_CurrentNode(System::UnicodeString Value);
+  virtual void __fastcall Set_NeedConfirmAmount(int Value);
+  virtual void __fastcall Set_NeedPasswordAmount(int Value);
+  virtual void __fastcall Set_SalesPassword(System::UnicodeString Value);
+  virtual void __fastcall Set_Desc(System::UnicodeString Value);
+public:
+  virtual void __fastcall AfterConstruction(void);
+};
+
+// TXMLKeyboardType 
+
+class TXMLKeyboardType : public Xml::Xmldoc::TXMLNodeCollection, public IXMLKeyboardType
+{
+  __IXMLNODECOLLECTION_IMPL__
+protected:
+  // IXMLKeyboardType 
+  virtual _di_IXMLKeyboardCodeType __fastcall Get_KeyboardCode(int Index);
+  virtual _di_IXMLKeyboardCodeType __fastcall Add();
+  virtual _di_IXMLKeyboardCodeType __fastcall Insert(const int Index);
+public:
+  virtual void __fastcall AfterConstruction(void);
+};
+
+// TXMLKeyboardCodeType 
+
+class TXMLKeyboardCodeType : public Xml::Xmldoc::TXMLNode, public IXMLKeyboardCodeType
+{
+  __IXMLNODE_IMPL__
+protected:
+  // IXMLKeyboardCodeType 
+  virtual System::UnicodeString __fastcall Get_InnerCode();
+  virtual System::UnicodeString __fastcall Get_KeyboardName();
+  virtual System::UnicodeString __fastcall Get_KeyboardValue();
+  virtual void __fastcall Set_InnerCode(System::UnicodeString Value);
+  virtual void __fastcall Set_KeyboardName(System::UnicodeString Value);
+  virtual void __fastcall Set_KeyboardValue(System::UnicodeString Value);
+};
+
+// TXMLGameType 
+
+class TXMLGameType : public Xml::Xmldoc::TXMLNodeCollection, public IXMLGameType
+{
+  __IXMLNODECOLLECTION_IMPL__
+protected:
+  // IXMLGameType 
+  virtual System::UnicodeString __fastcall Get_GameNode();
+  virtual System::UnicodeString __fastcall Get_GameID();
+  virtual System::UnicodeString __fastcall Get_GameName();
+  virtual System::UnicodeString __fastcall Get_EnterKey();
+  virtual System::UnicodeString __fastcall Get_DefaultStakeNode();
+  virtual _di_IXMLStakeType __fastcall Get_Stake(int Index);
+  virtual void __fastcall Set_GameNode(System::UnicodeString Value);
+  virtual void __fastcall Set_GameID(System::UnicodeString Value);
+  virtual void __fastcall Set_GameName(System::UnicodeString Value);
+  virtual void __fastcall Set_EnterKey(System::UnicodeString Value);
+  virtual void __fastcall Set_DefaultStakeNode(System::UnicodeString Value);
+  virtual _di_IXMLStakeType __fastcall Add();
+  virtual _di_IXMLStakeType __fastcall Insert(const int Index);
+public:
+  virtual void __fastcall AfterConstruction(void);
+};
+
+// TXMLGameTypeList 
+
+class TXMLGameTypeList : public Xml::Xmldoc::TXMLNodeCollection, public IXMLGameTypeList
+{
+  __IXMLNODECOLLECTION_IMPL__
+protected:
+  // IXMLGameTypeList 
+  virtual _di_IXMLGameType __fastcall Add();
+  virtual _di_IXMLGameType __fastcall Insert(const int Index);
+
+  virtual _di_IXMLGameType __fastcall Get_Item(int Index);
+};
+
+// TXMLStakeType 
+
+class TXMLStakeType : public Xml::Xmldoc::TXMLNodeCollection, public IXMLStakeType
+{
+  __IXMLNODECOLLECTION_IMPL__
+protected:
+  // IXMLStakeType 
+  virtual System::UnicodeString __fastcall Get_StakeNode();
+  virtual System::UnicodeString __fastcall Get_StakeName();
+  virtual System::UnicodeString __fastcall Get_PlayBetId();
+  virtual System::UnicodeString __fastcall Get_FinishedNode();
+  virtual System::UnicodeString __fastcall Get_Desc();
+  virtual _di_IXMLChoiceType __fastcall Get_Choice(int Index);
+  virtual void __fastcall Set_StakeNode(System::UnicodeString Value);
+  virtual void __fastcall Set_StakeName(System::UnicodeString Value);
+  virtual void __fastcall Set_PlayBetId(System::UnicodeString Value);
+  virtual void __fastcall Set_FinishedNode(System::UnicodeString Value);
+  virtual void __fastcall Set_Desc(System::UnicodeString Value);
+  virtual _di_IXMLChoiceType __fastcall Add();
+  virtual _di_IXMLChoiceType __fastcall Insert(const int Index);
+public:
+  virtual void __fastcall AfterConstruction(void);
+};
+
+// TXMLChoiceType 
+
+class TXMLChoiceType : public Xml::Xmldoc::TXMLNode, public IXMLChoiceType
+{
+  __IXMLNODE_IMPL__
+protected:
+  // IXMLChoiceType 
+  virtual System::UnicodeString __fastcall Get_ChoiceKey();
+  virtual System::UnicodeString __fastcall Get_JumpTo();
+  virtual void __fastcall Set_ChoiceKey(System::UnicodeString Value);
+  virtual void __fastcall Set_JumpTo(System::UnicodeString Value);
+};
+
+// Global Functions 
+
+_di_IXMLTerminalListType __fastcall GetTerminalList(Xml::Xmlintf::_di_IXMLDocument Doc);
+_di_IXMLTerminalListType __fastcall GetTerminalList(Xml::Xmldoc::TXMLDocument *Doc);
+_di_IXMLTerminalListType __fastcall LoadTerminalList(const System::UnicodeString& FileName);
+_di_IXMLTerminalListType __fastcall  NewTerminalList();
+
+#define TargetNamespace ""
+
+#endif

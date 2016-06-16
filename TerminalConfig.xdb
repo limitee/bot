@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="GB2312"?>
+<!-- edited with XMLSpy v2011 (http://www.altova.com) by Liuxinfeng (LottChina) -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xdb="http://www.borland.com/schemas/delphi/10.0/XMLDataBinding">
+	<xsd:include schemaLocation="PosConfig.xsd"/>
+	<xsd:simpleType name="InnerCodeEnum">
+		<xsd:annotation>
+			<xsd:documentation>出票系统内部使用的单字节键盘按键枚举，每个内部键盘码都有固定的含义，并与各实例终端机的实际按键KeyboardCode值一一对应。程序配置文件内部只按照列表中的这些内部按键码处理。</xsd:documentation>
+			<xsd:documentation>0~9数字对应数字；!是F1；=是F2；Fn尽量用数字n键+Shift的字符表示；B是倍投功能；D是退格；Q是返回上级；E是回车；SXZY分别是上下左右方向键；+根据终端不同对应追加的加号或减号；J是兑奖；W是玩法选择；~是空延时。</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="0"/>
+			<xsd:enumeration value="1"/>
+			<xsd:enumeration value="2"/>
+			<xsd:enumeration value="3"/>
+			<xsd:enumeration value="4"/>
+			<xsd:enumeration value="5"/>
+			<xsd:enumeration value="6"/>
+			<xsd:enumeration value="7"/>
+			<xsd:enumeration value="8"/>
+			<xsd:enumeration value="9"/>
+			<xsd:enumeration value="!"/>
+			<xsd:enumeration value="@"/>
+			<xsd:enumeration value="#"/>
+			<xsd:enumeration value="$"/>
+			<xsd:enumeration value="%"/>
+			<xsd:enumeration value="^"/>
+			<xsd:enumeration value="*"/>
+			<xsd:enumeration value="="/>
+			<xsd:enumeration value="~"/>
+			<xsd:enumeration value="+"/>
+			<xsd:enumeration value="B"/>
+			<xsd:enumeration value="D"/>
+			<xsd:enumeration value="E"/>
+			<xsd:enumeration value="Q"/>
+			<xsd:enumeration value="S"/>
+			<xsd:enumeration value="W"/>
+			<xsd:enumeration value="X"/>
+			<xsd:enumeration value="Y"/>
+			<xsd:enumeration value="Z"/>
+			<xsd:enumeration value="J"/>
+			<xsd:enumeration value="T"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:simpleType name="KeyboardValueEnum">
+		<xsd:annotation>
+			<xsd:documentation>标准键盘ASCII名称枚举，并添加系统内部定义的Nop键盘用于延时</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="Nop"/>
+			<xsd:enumeration value="F1"/>
+			<xsd:enumeration value="F2"/>
+			<xsd:enumeration value="F3"/>
+			<xsd:enumeration value="F4"/>
+			<xsd:enumeration value="F5"/>
+			<xsd:enumeration value="F6"/>
+			<xsd:enumeration value="F7"/>
+			<xsd:enumeration value="F8"/>
+			<xsd:enumeration value="F9"/>
+			<xsd:enumeration value="F10"/>
+			<xsd:enumeration value="F11"/>
+			<xsd:enumeration value="F12"/>
+			<xsd:enumeration value="Esc"/>
+			<xsd:enumeration value="Tab"/>
+			<xsd:enumeration value="Shift"/>
+			<xsd:enumeration value="Ctrl"/>
+			<xsd:enumeration value="Alt"/>
+			<xsd:enumeration value="Space"/>
+			<xsd:enumeration value="Backspace"/>
+			<xsd:enumeration value="Enter"/>
+			<xsd:enumeration value="Up"/>
+			<xsd:enumeration value="Down"/>
+			<xsd:enumeration value="Left"/>
+			<xsd:enumeration value="Right"/>
+			<xsd:enumeration value="Insert"/>
+			<xsd:enumeration value="Delete"/>
+			<xsd:enumeration value="Home"/>
+			<xsd:enumeration value="End"/>
+			<xsd:enumeration value="PageUp"/>
+			<xsd:enumeration value="PageDown"/>
+			<xsd:enumeration value="*"/>
+			<xsd:enumeration value="'"/>
+			<xsd:enumeration value=","/>
+			<xsd:enumeration value="+"/>
+			<xsd:enumeration value="-"/>
+			<xsd:enumeration value="."/>
+			<xsd:enumeration value="0"/>
+			<xsd:enumeration value="1"/>
+			<xsd:enumeration value="2"/>
+			<xsd:enumeration value="3"/>
+			<xsd:enumeration value="4"/>
+			<xsd:enumeration value="5"/>
+			<xsd:enumeration value="6"/>
+			<xsd:enumeration value="7"/>
+			<xsd:enumeration value="8"/>
+			<xsd:enumeration value="9"/>
+			<xsd:enumeration value="A"/>
+			<xsd:enumeration value="B"/>
+			<xsd:enumeration value="C"/>
+			<xsd:enumeration value="D"/>
+			<xsd:enumeration value="E"/>
+			<xsd:enumeration value="F"/>
+			<xsd:enumeration value="G"/>
+			<xsd:enumeration value="H"/>
+			<xsd:enumeration value="I"/>
+			<xsd:enumeration value="J"/>
+			<xsd:enumeration value="K"/>
+			<xsd:enumeration value="L"/>
+			<xsd:enumeration value="M"/>
+			<xsd:enumeration value="N"/>
+			<xsd:enumeration value="O"/>
+			<xsd:enumeration value="P"/>
+			<xsd:enumeration value="Q"/>
+			<xsd:enumeration value="R"/>
+			<xsd:enumeration value="S"/>
+			<xsd:enumeration value="T"/>
+			<xsd:enumeration value="U"/>
+			<xsd:enumeration value="V"/>
+			<xsd:enumeration value="W"/>
+			<xsd:enumeration value="X"/>
+			<xsd:enumeration value="Y"/>
+			<xsd:enumeration value="Z"/>
+			<xsd:enumeration value="["/>
+			<xsd:enumeration value="]"/>
+			<xsd:enumeration value="`"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:simpleType name="TerminalTypeEnum">
+		<xsd:annotation>
+			<xsd:documentation>终端机硬件的类型枚举</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="C8"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:complexType name="KeyboardCodeType">
+		<xsd:annotation>
+			<xsd:documentation>终端机键盘特殊按键或不确定按键对应键值码表，系统内码表示：功能键名称：ASCII值</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:attribute name="InnerCode" type="InnerCodeEnum"/>
+		<xsd:attribute name="KeyboardName" type="xsd:string"/>
+		<xsd:attribute name="KeyboardValue" type="KeyboardValueEnum"/>
+	</xsd:complexType>
+	<xsd:complexType name="KeyboardType">
+		<xsd:annotation>
+			<xsd:documentation>键盘类型的定义，类型、参数和一组终端机小键盘的按键，常用的按键序列</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="KeyboardCode" type="KeyboardCodeType" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="Login" type="xsd:string"/>
+		<xsd:attribute name="Shutdown" type="xsd:string"/>
+		<xsd:attribute name="DefaultBackRoot" type="xsd:string"/>
+		<xsd:attribute name="PrintConfirm" type="xsd:string"/>
+		<xsd:attribute name="BobusPrefix" type="xsd:string"/>
+		<xsd:attribute name="BobusPostfix" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:complexType name="InnerKeyStringType">
+		<xsd:annotation>
+			<xsd:documentation>用内码表示的一组按键序列类型，包含1~127个按键。为了方便编辑和表示，暂不使用本类型直接使用字符串。</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="InnerKeyCode" type="InnerCodeEnum" minOccurs="1" maxOccurs="127"/>
+		</xsd:sequence>
+		<xsd:attribute name="Desc" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:complexType name="ReportMenuType">
+		<xsd:annotation>
+			<xsd:documentation>终端机报表条目类型，显示名称，值为按键序列</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:attribute name="Caption" type="xsd:string"/>
+		<xsd:attribute name="QueryID" type="xsd:string"/>
+		<xsd:attribute name="InnerKeys" type="xsd:string"/>
+		<xsd:attribute name="HaveStub" type="xsd:boolean"/>
+	</xsd:complexType>
+	<xsd:complexType name="CategoryReportType">
+		<xsd:annotation>
+			<xsd:documentation>终端机报表的设置</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="ReportMenu" type="ReportMenuType" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="FinishKeys" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:complexType name="TerminalType">
+		<xsd:annotation>
+			<xsd:documentation>终端机ID、名称以及串口等其他设置，以及本终端上的小键盘定义，和能够出票的一组游戏对象列表</xsd:documentation>  <xsd:appinfo/>
+    </xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="Keyboard" type="KeyboardType" maxOccurs="1"/>
+			<xsd:element name="CategoryReport" type="CategoryReportType" maxOccurs="1"/>
+			<xsd:element name="LotteryPos" type="LotteryPosType" maxOccurs="1"/>
+		</xsd:sequence>
+		<xsd:attribute name="TerminalID" type="xsd:string"/>
+		<xsd:attribute name="TerminalType" type="TerminalTypeEnum"/>
+		<xsd:attribute name="ConnectionKey" type="xsd:string"/>
+		<xsd:attribute name="BoxComParam" type="xsd:string"/>
+		<xsd:attribute name="EnableAutoRun" type="xsd:boolean"/>
+		<xsd:attribute name="Desc" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:complexType name="DataCenterType">
+		<xsd:annotation>
+			<xsd:documentation>出票兑奖数据中心的配置文件，可以包含多台不同类型的终端机</xsd:documentation>  <xsd:appinfo xdb:docElement="DataCenter"/>
+    </xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="Terminal" type="TerminalType" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="CenterCode" type="xsd:string"/>
+		<xsd:attribute name="ServerHost" type="xsd:string"/>
+		<xsd:attribute name="ServerPort" type="xsd:int"/>
+		<xsd:attribute name="BinFileDir" type="xsd:string"/>
+		<xsd:attribute name="HexFileDir" type="xsd:string"/>
+		<xsd:attribute name="PrinterCom" type="xsd:string"/>
+		<xsd:attribute name="PrinterComParam" type="xsd:string"/>
+		<xsd:attribute name="Desc" type="xsd:string"/>
+	</xsd:complexType>
+	<xsd:element name="DataCenter" type="DataCenterType"/>
+</xsd:schema>

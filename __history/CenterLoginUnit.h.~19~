@@ -1,0 +1,46 @@
+//---------------------------------------------------------------------------
+
+#ifndef CenterLoginUnitH
+#define CenterLoginUnitH
+//---------------------------------------------------------------------------
+#include <System.Classes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.StdCtrls.hpp>
+#include <Vcl.Forms.hpp>
+#include <Vcl.ExtCtrls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Vcl.Mask.hpp>
+#include <Vcl.Buttons.hpp>
+#include <IdBaseComponent.hpp>
+#include <IdComponent.hpp>
+#include <IdHTTP.hpp>
+#include <IdTCPClient.hpp>
+#include <IdTCPConnection.hpp>
+//---------------------------------------------------------------------------
+class TLoginForm : public TForm
+{
+__published:	// IDE-managed Components
+	TLabel *Label1;
+	TLabel *Label2;
+	TImage *Image1;
+	TEdit *EditAccount;
+	TMaskEdit *MaskEditPasswd;
+	TBitBtn *BitBtn1;
+	TCheckBox *CheckBoxRemenber;
+	TShape *Shape1;
+	TShape *Shape2;
+	TIdHTTP *IdHTTP;
+	void __fastcall BitBtn1Click(TObject *Sender);
+	void __fastcall FormShow(TObject *Sender);
+private:	// User declarations
+
+	AnsiString CenterLogin(AnsiString account, AnsiString passwd);
+	AnsiString PackageHeadJson(AnsiString cmd, AnsiString body, AnsiString account, AnsiString passwd);
+
+public:		// User declarations
+	__fastcall TLoginForm(TComponent* Owner);
+};
+//---------------------------------------------------------------------------
+extern PACKAGE TLoginForm *LoginForm;
+//---------------------------------------------------------------------------
+#endif

@@ -1,0 +1,18 @@
+//---------------------------------------------------------------------------
+
+#ifndef TerminalMessageHandlerH
+#define TerminalMessageHandlerH
+//---------------------------------------------------------------------------
+
+#include "lib\jsoncpp\json.h"
+
+class CTerminalMessageHandler
+{
+
+
+
+
+}
+
+#endif
+

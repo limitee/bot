@@ -1,0 +1,341 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "TerminalConnection.h"
+#include "Terminal.h"
+#include "TerminalConfig.h"
+#include "TerminalBox.h"
+#include "TerminalRobotTyper.h"
+#include "TerminalPanel.h"
+#include "TerminalCategory.h"
+
+#include "Controller.h"
+#include "TicketCenterNodeApp.h"
+
+#include "lib\md5\MD5.h"
+#include "lib\jsoncpp\json.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+
+__fastcall CTerminalConnection::CTerminalConnection(CTerminal *term, bool CreateSuspended): TThread(CreateSuspended){
+	terminal =term;
+	memset(buff, 0, sizeof(buff));
+	buffLen =0;
+    sendMsgList =new TList();
+	//
+	ClientSocket =new TClientSocket(terminal->panel);
+	ClientSocket->Host =controller->config->ServerHost;
+	ClientSocket->Port =controller->config->ServerPort;
+	ClientSocket->ClientType =ctNonBlocking;                //非阻塞方式通信
+	ClientSocket->OnConnect =ClientSocketConnect;
+	ClientSocket->OnDisconnect =ClientSocketDisconnect;
+	ClientSocket->OnError =ClientSocketError;
+	ClientSocket->OnRead =ClientSocketRead;
+    ClientSocket->Active =false;
+	//
+	isConnected =false;
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalConnection::ClientSocketConnect(TObject *Sender, TCustomWinSocket *Socket){
+    Login();    //连接以后马上发登录
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalConnection::ClientSocketDisconnect(TObject *Sender, TCustomWinSocket *Socket){
+	isConnected =false;
+	sendMsgList->Clear();           	//下发队列清空
+	memset(buff, 0, sizeof(buff));
+	buffLen =0;
+	terminal->monitor->SetConnectionStatus(false);
+	Synchronize(&terminal->panel->SetDisconnectStatus);
+}
+//---------------------------------------------------------------------------
+void __fastcall CTerminalConnection::ClientSocketError(TObject *Sender, TCustomWinSocket *Socket, TErrorEvent ErrorEvent, int &ErrorCode){
+	ErrorCode =0;                       //发生错误的话复位
+	Synchronize(& DisConnect);
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalConnection::ClientSocketRead(TObject *Sender, TCustomWinSocket *Socket){
+	try{
+		//存入缓冲
+		int len =Socket->ReceiveLength();
+		Socket->ReceiveBuf(buff +buffLen, len);
+		buffLen +=len;
+		//分析报文头，长度
+		if (buffLen <=4) return;
+		BYTE bys[sizeof(DWORD)];    memset(bys, 0, sizeof(bys));
+		for(int i=0; i<4; i++) bys[i] =buff[i];
+		DWORD *packLenBytes  = (DWORD*) bys;
+		int packLen =ntohl(*packLenBytes);
+		//接收数据
+		if (packLen >0 && buffLen >=(packLen +4)){
+			char *packData  =new char[packLen];
+			memset(packData, 0, packLen);
+			for(int i=0; i<packLen; i++) packData[i] =buff[i +4];
+			//解析报文数据
+			for(int i=0; i<4; i++) bys[i] =packData[i];
+			DWORD *headLenBytes  = (DWORD*) bys;
+			int headLen =ntohl(*headLenBytes);
+			AnsiString head =AnsiString(packData +4, headLen);
+			AnsiString utf8Body =AnsiString(packData +4 +headLen, packLen -4 -headLen);
+			AnsiString body =Utf8ToAnsi(utf8Body);
+			delete packData;
+			//挪动数据，去掉个完整报文
+			for (int i=0; i<buffLen; i++) buff[i] =buff[i +packLen +4];
+			buffLen =buffLen -packLen -4;
+			//处理报文
+			HandleMessage(head, body);
+		}
+	}catch(...){}
+}
+
+//---------------------------------------------------------------------------
+void __fastcall CTerminalConnection::Execute(){
+	while (! Terminated){   	//循环从队列中取，下发
+		if (sendMsgList->Count >0){
+			ConnMessage *msg =(ConnMessage *)sendMsgList->First();
+			AnsiString cmd =msg->cmd;
+			AnsiString jsonBody =msg->body;
+			AnsiString head =PackageHeadJson(cmd, jsonBody);
+			AnsiString utf8Body =AnsiStringToUtf8(jsonBody);
+			DWORD totalLen =htonl(4 +head.Length() +utf8Body.Length());
+			DWORD headLen =htonl(head.Length());
+			try{
+				ClientSocket->Socket->SendBuf(&totalLen,4);
+				ClientSocket->Socket->SendBuf(&headLen,4);
+				ClientSocket->Socket->SendBuf(head.c_str(), head.Length());
+				ClientSocket->Socket->SendBuf(utf8Body.c_str(), utf8Body.Length());
+				sendMsgList->Delete(0);
+                delete msg; msg =NULL;
+			}catch(...){
+			}
+		}
+		Sleep(20);
+	}
+	delete sendMsgList;
+}
+
+//*************************************************************************************************************
+bool CTerminalConnection::AddMessageQueue(AnsiString cmd, AnsiString jsonBody){
+	ConnMessage *msg =new ConnMessage();
+	msg->cmd =cmd;
+	msg->body =jsonBody;
+	sendMsgList->Add(msg);             //加入队列
+	return true;
+}
+
+//*************************************************************************************************************
+void __fastcall CTerminalConnection::Connect(){
+	try{
+		ClientSocket->Active =true;
+	}catch(...){
+	}
+}
+
+//*************************************************************************************************************
+void __fastcall CTerminalConnection::DisConnect(){
+	isConnected =false;
+	try{
+		ClientSocket->Active =false;        							//自动断开，则自动重连，点击后才Login上网连接
+	}catch(...){
+	}
+}
+
+//*************************************************************************************************************
+void CTerminalConnection::HandleMessage(AnsiString head, AnsiString body){
+	Json::Reader reader;
+	Json::Value value;
+	AnsiString cmd;
+	if (reader.parse(head.c_str(), value)) {
+		cmd = value["cmd"].asCString();
+	}
+	Request request;
+	if (cmd ==CMD_TERMINAL_LOGIN) {       		//登录应答
+		isConnected =true;
+		terminal->monitor->SetConnectionStatus(true);
+		Synchronize(& terminal->panel->SetLoginStatus);
+	}else if (cmd ==CMD_HEART_BEAT) {   //心跳
+        HeartBeat();
+	}else if (cmd ==CMD_TICKET) {      	//服务器下发的出票数据
+		Ticket *ticket =new Ticket();
+		ParserRequest(body, (Request *)ticket);
+		terminal->robotTyper->SetCurrentRequest((Request *)ticket);
+	}else if (cmd ==CMD_BONUS) {        //兑奖
+		Bonus *bonus =new Bonus();
+		ParserRequest(body, (Request *)bonus);
+		terminal->robotTyper->SetCurrentRequest((Request *)bonus);
+	}else if (cmd ==CMD_QUERY_TERM || cmd ==CMD_QUERY_RECEIPT) {   //各种查询，单次操作，也需要等票根并回复
+		Query *query =new Query();
+        query->queryCmdType =cmd;
+		ParserRequest(body, (Request *)query);
+		terminal->robotTyper->SetCurrentRequest((Request *)query);
+	}
+}
+
+//*************************************************************************************************************
+void CTerminalConnection::ParserRequest(AnsiString body, Request *request){
+	Json::Reader reader;
+	Json::Value value;
+	if (request->reqType ==RequestTypeEnum::TICKET){
+		Ticket *ticket =(Ticket *)request;
+		if (reader.parse(body.c_str(), value)) {
+			Json::Value jtv = value["ticket"];
+			ticket->id =jtv["id"].asInt();
+			ticket->gameId =IntToStr(jtv["game_id"].asInt());
+			ticket->playType =jtv["play_type"].asCString();
+			ticket->betType =jtv["bet_type"].asCString();
+			ticket->multiple =jtv["multiple"].asInt();
+			ticket->number =jtv["number"].asCString();
+			ticket->icount =jtv["icount"].asInt();
+			ticket->amount =jtv["amount"].asInt();       	//分
+		}
+		ticket->fileData =false;             				//非本地票
+	}else if (request->reqType ==RequestTypeEnum::BONUS) {
+		Bonus *bonus =(Bonus *)request;
+		if (reader.parse(body.c_str(), value)) {
+			Json::Value jtv = value["ticket"];
+			bonus->id =jtv["id"].asInt();
+			bonus->seq =jtv["seq"].asCString();
+			bonus->bonus =jtv["bonus"].asInt();
+			bonus->bonus_after_tax =jtv["bonus_after_tax"].asInt();
+		}
+	}else if (request->reqType ==RequestTypeEnum::QUERY) {
+		Query *query =(Query *)request;
+		if (reader.parse(body.c_str(), value)) {
+			if (query->queryCmdType ==CMD_QUERY_TERM){      		//查奖期
+				query->gameId =IntToStr(value["game_id"].asInt());
+				query->type =value["type"].asInt();
+			}else if (query->queryCmdType ==CMD_QUERY_RECEIPT){    	//查缴款
+				query->type =value["type"].asInt();
+			}
+		}
+	}
+}
+
+//*************************************************************************************************************
+bool CTerminalConnection::ReplyStub(Stub stub){
+	Json::Value body;
+	if (stub.request->reqType ==RequestTypeEnum::TICKET){          //出票的，多几个字段
+		Ticket *ticket =(Ticket *)stub.request;
+		body["id"] =ticket->id;
+		body["game_id"] =ticket->gameId.c_str();
+		body["play_type"] =ticket->playType.c_str();
+		body["bet_type"] =ticket->betType.c_str();
+		body["number"] =ticket->number.c_str();
+		body["status"] =stub.status;
+		body["stub"] =stub.stub.c_str();
+		Json::Value ticketValue;
+		ticketValue["ticket"] =body;
+		return AddMessageQueue(CMD_TICKET, AnsiString(ticketValue.toStyledString().c_str()));
+	}else if (stub.request->reqType ==RequestTypeEnum::BONUS){   //兑奖的
+		Bonus *bonus =(Bonus *)stub.request;
+		body["id"] =bonus->id;
+		body["bonus"] =(int)bonus->bonus ;
+		body["bonus_after_tax"] =(int)bonus->bonus_after_tax;
+		body["seq"] =bonus->seq.c_str();
+		body["stub"] =stub.stub.c_str();
+		Json::Value ticketValue;
+		ticketValue["ticket"] =body;
+		return AddMessageQueue(CMD_BONUS, AnsiString(ticketValue.toStyledString().c_str()));
+	}else if (stub.request->reqType ==RequestTypeEnum::QUERY){  //查询的
+		Query *query =(Query *)stub.request;
+		if (query->queryCmdType ==CMD_QUERY_TERM){      		//查奖期
+			body["game_id"] =StrToInt(query->gameId);
+			body["type"] =query->type;
+			body["stub"] =stub.stub.c_str();
+			AnsiString bodyJson =AnsiString(body.toStyledString().c_str());
+			return AddMessageQueue(CMD_QUERY_TERM, bodyJson);
+		}else if (query->queryCmdType ==CMD_QUERY_RECEIPT){    	//查缴款
+			body["type"] =query->type;
+			body["stub"] =stub.stub.c_str();
+			AnsiString bodyJson =AnsiString(body.toStyledString().c_str());
+			return AddMessageQueue(CMD_QUERY_RECEIPT, bodyJson);
+		}
+	}
+}
+
+//*************************************************************************************************************
+bool CTerminalConnection::Login(){
+	AnsiString cmd =CMD_TERMINAL_LOGIN;
+	Json::Value body;
+	body["msg"] ="我要登陆";
+	return AddMessageQueue(cmd, AnsiString(body.toStyledString().c_str()));
+}
+
+bool CTerminalConnection::HeartBeat(){
+	return AddMessageQueue(CMD_HEART_BEAT, "{}");
+}
+
+//*************************************************************************************************************
+// 使用MainForm的控件，出票兑奖的Socket异常通信时的备份接口，修改票据的信息或状态
+//*************************************************************************************************************
+//bool CTerminalConnection::HttpResetTicket(Ticket *ticket){
+//	Json::Value body;
+//	body["id"] =ticket->id;
+//	body["uuid"] =controller->GetGUID().c_str();
+//	AnsiString resp =HttpPost(CMD_TICKET_RESET, AnsiString(body.toStyledString().c_str()));
+//	if (resp.Pos("操作成功") >0) return true;
+//	return false;
+//}
+//
+////-------------------------------------------------------------------------------------------------------
+//bool CTerminalConnection::HttpUpdateTicketStub(Stub stub){
+//	Json::Value body;
+//	Ticket *ticket =(Ticket *)stub.request;
+//	body["uuid"] =controller->GetGUID().c_str();
+//	body["id"] =ticket->id;
+//	body["game_id"] =ticket->gameId.c_str();
+//	body["play_type"] =ticket->playType.c_str();
+//	body["bet_type"] =ticket->betType.c_str();
+//	body["number"] =ticket->number.c_str();
+//	body["status"] =stub.status;
+//	body["stub"] =stub.stub.c_str();
+//	Json::Value ticketValue;
+//	ticketValue["ticket"] =body;
+//
+//	AnsiString resp =HttpPost(CMD_STUB_REPAIR, AnsiString(ticketValue.toStyledString().c_str()));
+//	if (resp.Pos("操作成功") >0) return true;
+//	return false;
+//}
+//
+////-------------------------------------------------------------------------------------------------------
+//bool CTerminalConnection::HttpReport(AnsiString report){
+//	Json::Value body;
+//	body["stub"] =report.c_str();
+//	body["uuid"] =controller->GetGUID().c_str();
+//	AnsiString resp =HttpPost(CMD_STUB_REPORT, AnsiString(body.toStyledString().c_str()));
+//	if (resp.Pos("操作成功") >0) return true;
+//	return false;
+//}
+//
+////-------------------------------------------------------------------------------------------------------
+//AnsiString CTerminalConnection::HttpPost(AnsiString cmd, AnsiString jsonBody){
+//	TStringList *strs = new TStringList();
+//	strs->Add("head=" +PackageHeadJson(cmd, jsonBody));
+//	strs->Add("body=" +jsonBody);
+//	//请求并获得应答
+//	TStringStream *resp = new TStringStream();
+//	try{
+//		MainForm->IdHTTP->Post(GATE_WAY, strs, resp);
+//	}catch(...){
+//	}
+//	delete strs;
+//	AnsiString responseStr =Utf8ToAnsi(resp->DataString);     	//UTF8需转换
+//
+//	return responseStr;
+//}
+
+//-------------------------------------------------------------------------------------------------------
+//Socket和HTTP都用这个结构体的 Head
+AnsiString CTerminalConnection::PackageHeadJson(AnsiString cmd, AnsiString jsonBody){
+	AnsiString timeStamp =FormatDateTime("yyyy-mm-dd", Now()) +" "+FormatDateTime("hh:nn:ss.zzz000 +08:00", Now());
+	AnsiString terminalId = controller->config->CenterCode + terminal->xmlConfig->TerminalID;       //省份代码+终端号
+	AnsiString terminalKey =MD5_CodeString(terminal->xmlConfig->ConnectionKey);
+	AnsiString md5degist =MD5_CodeString(AnsiStringToUtf8(terminalKey +jsonBody +timeStamp));
+	AnsiString head ="{\"cmd\":\"" +cmd +"\",\"digest\":\"" +md5degist +"\",\"digestType\":\"md5\",\"timeStamp\":\"" +timeStamp +"\",\"userId\":\"" +terminalId +"\",\"userType\":\"terminal\"}";
+	return head;
+}
+

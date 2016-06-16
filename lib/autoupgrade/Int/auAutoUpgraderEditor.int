@@ -1,0 +1,103 @@
+{*******************************************************************************
+
+  AutoUpgrader Professional
+  FILE: auAutoUpgraderEditor.pas - property editor for auAutoUpgrade component.
+
+  Copyright (c) 1999-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+*******************************************************************************}
+{$I auDefines.inc}
+
+unit auAutoUpgraderEditor;
+
+interface
+
+uses
+  Windows, Classes, Controls, Forms, StdCtrls, Menus, Graphics,
+  ExtCtrls, ComCtrls, SysUtils, Dialogs,
+  Registry,
+{$IFDEF D4}
+  ImgList,
+{$ENDIF}
+
+{$IFDEF D6}
+  DesignIntf, DesignWindows,
+{$ELSE}
+  DsgnIntf, DsgnWnds,
+{$ENDIF}
+
+  auAutoUpgrader, auExtAssociation;
+
+type
+  TauAutoUpgraderEditor = class(TDesignWindow)
+    GroupBox1: TGroupBox;
+    Label1: TLabel;
+    Label2: TLabel;
+    DateEdit: TEdit;
+    NumberEdit: TEdit;
+    Label3: TLabel;
+    ByDateRadio: TRadioButton;
+    ByNumberRadio: TRadioButton;
+    GroupBox2: TGroupBox;
+    GroupBox3: TGroupBox;
+    OKBtn: TButton;
+    CancelBtn: TButton;
+    ExportBtn: TButton;
+    SaveDialog: TSaveDialog;
+    AddBtn: TButton;
+    DeleteBtn: TButton;
+    CheckURLBtn: TButton;
+    Panel1: TPanel;
+    ImageList: TImageList;
+    PopupMenu: TPopupMenu;
+    ListView: TListView;
+    AddItem: TMenuItem;
+    DeleteItem: TMenuItem;
+    RenameItem: TMenuItem;
+    CheckURLItem: TMenuItem;
+    N2: TMenuItem;
+    Memo1: TMemo;
+    TestBtn: TButton;
+    Label6: TLabel;
+    ReplaceRadio: TRadioButton;
+    SetupRadio: TRadioButton;
+    RedirectRadio: TRadioButton;
+    procedure ExportBtnClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure OKBtnClick(Sender: TObject);
+    procedure CancelBtnClick(Sender: TObject);
+    procedure TestBtnClick(Sender: TObject);
+    procedure ByDateRadioClick(Sender: TObject);
+    procedure DateEditExit(Sender: TObject);
+    procedure AddBtnClick(Sender: TObject);
+    procedure ListViewChange(Sender: TObject; Item: TListItem;
+      Change: TItemChange);
+    procedure FormShow(Sender: TObject);
+    procedure DeleteBtnClick(Sender: TObject);
+    procedure CheckURLBtnClick(Sender: TObject);
+    procedure RenameItemClick(Sender: TObject);
+    procedure ListViewDblClick(Sender: TObject);
+  private
+    procedure AddURLToList(URL: String);  
+  public
+    AutoUpgrader: TauAutoUpgrader;
+  end;
+
+{$IFNDEF D4}
+type
+  IDesigner = TDesigner;
+  IFormDesigner = TFormDesigner;
+{$ENDIF}
+
+procedure ShowAutoUpgraderDesigner(Designer: IDesigner; AutoUpgrader: TauAutoUpgrader);
+
+implementation

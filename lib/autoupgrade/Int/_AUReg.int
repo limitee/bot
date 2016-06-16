@@ -1,0 +1,36 @@
+{*******************************************************************************
+
+  AutoUpgrader Professional
+  FILE: _AUReg.pas - Components and property editor registration within the IDE.
+
+  Copyright (c) 1999-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+  Restrictions
+
+  The source code contained within this file and all related files or any
+portion of its contents shall at no time be copied, transferred, sold,
+distributed, or otherwise made available to other individuals without express
+             written consent and permission from the UtilMind Solutions.
+
+  Consult the End User License Agreement (EULA) for information on additional
+restrictions.
+
+*******************************************************************************}
+{$I auDefines.inc}
+
+unit _AUReg;
+
+interface
+
+procedure Register;
+
+implementation

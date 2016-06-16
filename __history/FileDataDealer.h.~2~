@@ -1,0 +1,32 @@
+//---------------------------------------------------------------------------
+
+#ifndef FileDataDealerH
+#define FileDataDealerH
+//---------------------------------------------------------------------------
+#include <vcl.h>
+
+
+class CController;
+class CTerminal;
+
+class COrderDealer : TThread
+{
+	public:
+		__fastcall COrderDealer(CController *c, bool CreateSuspended);
+
+		//自动处理线程任务
+		void __fastcall Execute();
+
+		void NotifyPrint(CTerminal *term);
+
+	private:
+		CController *controller;
+		CTerminal *terminal;
+
+		int lineIndex;
+
+		void DispatchTicket();
+
+};
+
+#endif

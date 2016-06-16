@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.769,=C:\Users\lenovo\Documents\Embarcadero\Studio\Projects\Unit4.cpp</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.742,=C:\Users\lenovo\Documents\Embarcadero\Studio\Projects\Project3PCH1.h</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.326,=C:\Users\lenovo\Documents\Embarcadero\Studio\Projects\File1.cpp</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.925,D:\LottChina\DriverDll\C8\Unit1.h=D:\LottChina\DriverDll\C8\CmdParser.h</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.812,C:\Users\lenovo\Documents\Embarcadero\Studio\Projects\File1.cpp=D:\LottChina\DriverDll\C8\C8.cpp</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.315,=C:\Users\lenovo\Documents\Embarcadero\Studio\Projects\Project3PCH1.h</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.925,D:\LottChina\DriverDll\C8\Unit1.cpp=D:\LottChina\DriverDll\C8\CmdParser.cpp</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.324,C:\Users\lenovo\Documents\Embarcadero\Studio\Projects\Project3.cbproj=D:\LottChina\DriverDll\C8\C8Driver.cbproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.777,=D:\LottChina\DriverDll\C8\Unit1.cpp</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.352,C:\Users\lenovo\Documents\Embarcadero\Studio\Projects\Project3PCH1.h=D:\LottChina\DriverDll\C8\C8Driver.h</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.653,D:\LottChina\DriverDll\C8\C8Driver.cbproj=D:\LottChina\DriverDll\C8\C8.cbproj</Transaction>
+    <Transaction>2016-04-11 11:47:31.598,D:\LottChina\DriverDll\C8\C8CmdParser.h=D:\LottChina\DriverDll\C8\CmdParser.h</Transaction>
+    <Transaction>2016-04-11 11:47:31.598,D:\LottChina\DriverDll\C8\C8CmdParser.cpp=D:\LottChina\DriverDll\C8\CmdParser.cpp</Transaction>
+  </Transactions>
+</BorlandProject>

@@ -1,0 +1,46 @@
+{*******************************************************************************
+
+  AutoUpgrader Professional
+  FILE: auAutoUpgraderUpgradeMsg.pas - Upgrade Request form
+
+  Copyright (c) 1999-2002 UtilMind Solutions
+  All rights reserved.
+  E-Mail: info@utilmind.com
+  WWW: http://www.utilmind.com, http://www.appcontrols.com
+
+  The entire contents of this file is protected by International Copyright
+Laws. Unauthorized reproduction, reverse-engineering, and distribution of all
+or any portion of the code contained in this file is strictly prohibited and
+may result in severe civil and criminal penalties and will be prosecuted to
+the maximum extent possible under the law.
+
+*******************************************************************************}
+unit auAutoUpgraderUpgradeMsg;
+
+interface
+
+uses
+  Windows, Classes, Controls, Forms, ExtCtrls, StdCtrls,
+  auAutoUpgrader;
+
+type
+  TauAutoUpgraderUpgradeMessageForm = class(TForm)
+    BottomPanel: TPanel;
+    YesBtn: TButton;
+    LaterBtn: TButton;
+    Label1: TLabel;
+    Icon: TImage;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormShow(Sender: TObject);
+  private
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
+  public
+  end;
+
+var
+  UpgradeMessageForm: TauAutoUpgraderUpgradeMessageForm = nil;
+
+function ShowUpgradeBox(Msg: String; TestMode: Boolean): Boolean;
+
+implementation

@@ -1,0 +1,48 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalSocketH
+#define TerminalSocketH
+//---------------------------------------------------------------------------
+
+#include <vcl.h>
+#include <System.Win.ScktComp.hpp>
+
+/******************************************************
+*  实现与后台的通信接口协议
+******************************************************/
+
+class CTerminal;
+
+class CTerminalSocket : TThread
+{
+	public:
+		__fastcall CTerminalSocket(CTerminal *t, bool CreateSuspended);
+
+		//自动处理线程任务
+		void __fastcall Execute();
+
+		void Connect();
+		void DisConnect();
+
+
+	public: 			//通信协议各个功能
+
+		//登录，发送本终端编号
+		bool Login();
+
+	private:
+
+		bool CanConnect;
+
+		CTerminal *terminal;
+
+		TClientSocket *ClientSocket;
+
+		//内部发送接收报文内容的方法
+		bool SendMessage(AnsiString cmd, AnsiString body);
+
+		bool ReceiveMessage(AnsiString& head, AnsiString& body);
+
+};
+
+
+#endif

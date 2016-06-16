@@ -1,0 +1,21 @@
+//---------------------------------------------------------------------------
+#ifndef TerminalDaemonH
+#define TerminalDaemonH
+//---------------------------------------------------------------------------
+#include <System.Classes.hpp>
+//---------------------------------------------------------------------------
+class CTerminal;
+
+class TerminalDaemon : public TThread
+{
+private:
+	CTerminal *terminal;
+
+protected:
+	void __fastcall Execute();
+
+public:
+	__fastcall TerminalDaemon(CTerminal *term, bool CreateSuspended);
+};
+//---------------------------------------------------------------------------
+#endif
